@@ -17,8 +17,9 @@ const routes: RouteRecordRaw[] = [
     path: '/verify',
     name: 'verify',
     component: () => import('../views/VerifyView.vue'),
+    // Protect this route
     beforeEnter: (to, from) => {
-      if (from.name !== 'register' && !localStorage.getItem('pendingVerification')) {
+      if (from.name !== 'register' && !to.params.email) {
         return { name: 'register' }
       }
     }
@@ -28,6 +29,7 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue')
   }
+  
 ]
 
 const router = createRouter({
