@@ -1,4 +1,4 @@
-<!-- src/views/RegisterView.vue -->
+<!-- RegisterView.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
@@ -9,7 +9,6 @@
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-        <!-- Success Alert -->
         <BaseAlert
           v-if="showSuccess"
           v-model="showSuccess"
@@ -18,7 +17,6 @@
           dismissible
         />
 
-        <!-- Error Alert -->
         <BaseAlert
           v-if="error"
           v-model="showError"
@@ -28,35 +26,35 @@
         />
 
         <form @submit.prevent="handleSubmit" class="space-y-6">
-          <!-- Username Input -->
           <BaseInput
             name="username"
             type="text"
             label="Username"
             v-model="formData.username"
-            :rules="{ required: true, min: 3, max: 50, pattern: /^[a-zA-Z0-9_]+$/ }"
+            :error="errors.username"
+            @blur="validateField('username')"
             autocomplete="username"
             required
           />
 
-          <!-- Email Input -->
           <BaseInput
             name="email"
             type="email"
             label="Email address"
             v-model="formData.email"
-            :rules="{ required: true, email: true, pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i }"
+            :error="errors.email"
+            @blur="validateField('email')"
             autocomplete="email"
             required
           />
 
-          <!-- Full Name Input -->
           <BaseInput
             name="fullName"
             type="text"
             label="Full name"
             v-model="formData.fullName"
-            :rules="{ required: true, min: 2 }"
+            :error="errors.fullName"
+            @blur="validateField('fullName')"
             autocomplete="name"
             required
           />
@@ -89,17 +87,66 @@ const formData = ref({
   fullName: ''
 })
 
+const errors = ref({
+  username: '',
+  email: '',
+  fullName: ''
+})
+
 const isLoading = ref(false)
 const error = ref('')
 const showError = ref(false)
 const showSuccess = ref(false)
 
+const validateField = (field: keyof typeof formData.value) => {
+  errors.value[field] = ''
+  
+  switch(field) {
+    case 'username':
+      if (!formData.value.username) {
+        errors.value.username = 'Username is required'
+      } else if (formData.value.username.length < 3) {
+        errors.value.username = 'Username must be at least 3 characters'
+      } else if (!/^[a-zA-Z0-9_]+$/.test(formData.value.username)) {
+        errors.value.username = 'Username can only contain letters, numbers, and underscores'
+      }
+      break
+      
+    case 'email':
+      if (!formData.value.email) {
+        errors.value.email = 'Email is required'
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.value.email)) {
+        errors.value.email = 'Invalid email format'
+      }
+      break
+      
+    case 'fullName':
+      if (!formData.value.fullName) {
+        errors.value.fullName = 'Full name is required'
+      } else if (formData.value.fullName.length < 2) {
+        errors.value.fullName = 'Full name must be at least 2 characters'
+      }
+      break
+  }
+}
+
+const validateForm = () => {
+  validateField('username')
+  validateField('email')
+  validateField('fullName')
+  
+  return !Object.values(errors.value).some(error => error)
+}
+
 const handleSubmit = async () => {
+  if (!validateForm()) {
+    return
+  }
+
+  isLoading.value = true
   error.value = ''
   showError.value = false
-  showSuccess.value = false
-  isLoading.value = true
-
+  
   try {
     const { data } = await api.post('/auth/register/initiate', {
       username: formData.value.username,
@@ -107,15 +154,18 @@ const handleSubmit = async () => {
       full_name: formData.value.fullName
     })
 
-    // Show success message before redirecting
     showSuccess.value = true
     
-    // Delay redirect to show success message
     setTimeout(() => {
-      router.push({ 
-        name: 'verify',
-        params: { email: data.email }
-      })
+      
+  // Redirect immediately to verify page
+  router.push({ 
+      name: 'verify',
+      params: { 
+        email: encodeURIComponent(data.email),
+        username: encodeURIComponent(formData.value.username)
+      }
+    })
     }, 1500)
 
   } catch (e: any) {
