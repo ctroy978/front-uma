@@ -35,14 +35,14 @@
             </label>
             <div class="flex justify-between gap-2">
               <input
-                v-for="(digit, index) in 6"
-                :key="index"
-                :ref="el => codeInputs[index] = el"
+                v-for="i in 6"
+                :key="i-1"
                 type="text"
                 maxlength="1"
-                v-model="code[index]"
-                @input="handleInput($event, index)"
-                @keydown="handleKeydown($event, index)"
+                :ref="(el) => setRef(el, i-1)"
+                v-model="code[i-1]"
+                @input="handleInput($event, i-1)"
+                @keydown="handleKeydown($event, i-1)"
                 @paste="handlePaste"
                 class="block w-12 h-12 text-2xl text-center border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               />
@@ -78,15 +78,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../utils/axios'
+import { ref, computed, onMounted, watch, ComponentPublicInstance } from 'vue'
 
 const route = useRoute()
 const router = useRouter()
 
 // Form state
-const code = ref(Array(6).fill(''))
+const code = ref<string[]>(Array(6).fill(''))
 const codeInputs = ref<HTMLInputElement[]>([])
 const isLoading = ref(false)
 const error = ref('')
@@ -107,14 +107,22 @@ const isComplete = computed(() => code.value.every(digit => digit))
 const verificationCode = computed(() => code.value.join(''))
 const decodedEmail = computed(() => decodeURIComponent(route.params.email as string))
 const decodedUsername = computed(() => decodeURIComponent(route.params.username as string))
+const decodedFullName = computed(() => decodeURIComponent(route.params.fullName as string))
+
+// Ref handling
+const setRef = (el: ComponentPublicInstance | Element | null, index: number) => {
+  if (el && 'focus' in el) {
+    codeInputs.value[index] = el as HTMLInputElement
+  }
+}
 
 // Input handling
 const handleInput = (event: Event, index: number) => {
   const input = event.target as HTMLInputElement
   const value = input.value
 
-  if (value && index < 5) {
-    codeInputs.value[index + 1]?.focus()
+  if (value && index < 5 && codeInputs.value[index + 1]) {
+    codeInputs.value[index + 1].focus()
   }
 }
 
@@ -127,14 +135,25 @@ const handleKeydown = (event: KeyboardEvent, index: number) => {
 
 const handlePaste = (event: ClipboardEvent) => {
   event.preventDefault()
-  const pastedData = event.clipboardData?.getData('text')
-  if (!pastedData) return
-
-  const digits = pastedData.slice(0, 6).split('')
-  code.value = [...digits, ...Array(6 - digits.length).fill('')]
+  const pastedText = event.clipboardData?.getData('text')
+  if (!pastedText) return
   
-  const lastIndex = Math.min(digits.length, 5)
-  codeInputs.value[lastIndex]?.focus()
+  const digits = pastedText.trim().split('').filter(char => /\d/.test(char)).slice(0, 6)
+  console.log('Processed digits:', digits)
+  
+  // Update each position directly
+  digits.forEach((digit, index) => {
+    code.value[index] = digit
+  })
+
+  // Fill remaining positions with empty strings
+  for (let i = digits.length; i < 6; i++) {
+    code.value[i] = ''
+  }
+
+  // Focus last filled or first empty position
+  const focusIndex = Math.min(digits.length, 5)
+  codeInputs.value[focusIndex]?.focus()
 }
 
 // API calls
@@ -144,7 +163,8 @@ const resendCode = async () => {
   try {
     await api.post('/auth/register/initiate', {
       email: decodedEmail.value,
-      username: decodedUsername.value
+      username: decodedUsername.value,
+      full_name: decodedFullName.value
     })
     
     resendTimeout.value = 60
@@ -163,10 +183,12 @@ const handleSubmit = async () => {
   showError.value = false
   
   try {
+    const pendingRegistration = JSON.parse(localStorage.getItem('pendingRegistration') ?? '{"fullName":""}')
     const { data } = await api.post('/auth/register/complete', {
       email: decodedEmail.value,
       username: decodedUsername.value,
-      verification_code: verificationCode.value
+      verification_code: verificationCode.value,
+      full_name: pendingRegistration.fullName
     })
 
     showSuccess.value = true
@@ -184,7 +206,9 @@ const handleSubmit = async () => {
     }, 1500)
 
   } catch (e: any) {
-    error.value = e.response?.data?.detail || 'Failed to verify code'
+    error.value = Array.isArray(e.response?.data?.detail) 
+      ? e.response?.data?.detail[0]?.msg 
+      : e.response?.data?.detail || 'Failed to verify code'
     showError.value = true
     code.value = Array(6).fill('')
     codeInputs.value[0]?.focus()

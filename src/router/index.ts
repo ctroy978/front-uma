@@ -14,18 +14,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/RegisterView.vue')
   },
   {
-    path: '/verify',
-    name: 'verify',
-    component: () => import('../views/VerifyView.vue'),
-    // Protect this route
-    beforeEnter: (to, from) => {
-      if (from.name !== 'register' && !to.params.email) {
-        return { name: 'register' }
-      }
-    }
-  },
-  {
-    path: '/verify/:email/:username',
+    path: '/verify/:email/:username/:fullName',  // Add fullName param
     name: 'verify',
     component: () => import('../views/VerifyView.vue'),
     props: true,
@@ -34,7 +23,7 @@ const routes: RouteRecordRaw[] = [
         return { name: 'register' }
       }
     }
-  },
+},
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',

@@ -139,40 +139,45 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validateForm()) {
-    return
-  }
+  if (!validateForm()) return;
 
-  isLoading.value = true
-  error.value = ''
-  showError.value = false
+  isLoading.value = true;
+  error.value = '';
+  showError.value = false;
   
   try {
     const { data } = await api.post('/auth/register/initiate', {
       username: formData.value.username,
       email: formData.value.email,
       full_name: formData.value.fullName
-    })
-
-    showSuccess.value = true
+    });
     
-    setTimeout(() => {
+    showSuccess.value = true;
+    localStorage.setItem('pendingVerification', 'true');
+    localStorage.setItem('pendingRegistration', JSON.stringify({
+      email: formData.value.email,
+      username: formData.value.username,
+      fullName: formData.value.fullName
+    }));
+
+    // Add delay before redirect
+    await new Promise(resolve => setTimeout(resolve, 500));
       
-  // Redirect immediately to verify page
-  router.push({ 
+    router.push({ 
       name: 'verify',
       params: { 
-        email: encodeURIComponent(data.email),
-        username: encodeURIComponent(formData.value.username)
+        email: encodeURIComponent(formData.value.email),
+        username: encodeURIComponent(formData.value.username),
+        fullName: encodeURIComponent(formData.value.fullName)
       }
-    })
-    }, 1500)
+    });
 
   } catch (e: any) {
-    error.value = e.response?.data?.detail || 'An error occurred during registration'
-    showError.value = true
+    console.error('Registration error:', e);
+    error.value = e.response?.data?.detail || 'An error occurred during registration';
+    showError.value = true;
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 </script>
