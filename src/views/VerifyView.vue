@@ -202,7 +202,7 @@ const handleSubmit = async () => {
     
     // Redirect after success message
     setTimeout(() => {
-      router.push({ name: 'home' })
+      router.push({ name: 'login' })
     }, 1500)
 
   } catch (e: any) {
