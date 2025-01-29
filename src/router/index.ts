@@ -43,49 +43,7 @@ const routes: RouteRecordRaw[] = [
       }
   
 
-    
-    
-  //   beforeEnter: (to, _from) => {
-  //     console.log('Entering verify-login route');
-      
-  //     const verification = localStorage.getItem('pendingLoginVerification') || 
-  //                        sessionStorage.getItem('pendingLoginVerification');
-  //     const storedEmail = localStorage.getItem('pendingLoginEmail') || 
-  //                        sessionStorage.getItem('pendingLoginEmail');
-  //     const paramEmail = decodeURIComponent(to.params.email as string);
-      
-  //     console.log('Route guard storage check:', {
-  //       localStorage: {
-  //         verification: localStorage.getItem('pendingLoginVerification'),
-  //         storedEmail: localStorage.getItem('pendingLoginEmail')
-  //       },
-  //       sessionStorage: {
-  //         verification: sessionStorage.getItem('pendingLoginVerification'),
-  //         storedEmail: sessionStorage.getItem('pendingLoginEmail')
-  //       },
-  //       paramEmail,
-  //       routeParams: to.params,
-  //       currentRoute: to.fullPath
-  //     });
-      
-  //     // Strict validation
-  //     if (!verification || !storedEmail || verification !== 'true') {
-  //       console.log('Invalid verification state, redirecting to login');
-  //       localStorage.clear();
-  //       sessionStorage.clear();
-  //       return { name: 'login' };
-  //     }
-      
-  //     if (storedEmail !== paramEmail) {
-  //       console.log('Email mismatch, redirecting to login');
-  //       localStorage.clear();
-  //       sessionStorage.clear();
-  //       return { name: 'login' };
-  //     }
-      
-  //     console.log('Verification passed, allowing navigation');
-  //     return true;
-  //   }
+
    },
   {
     path: '/register',
@@ -103,6 +61,15 @@ const routes: RouteRecordRaw[] = [
       if (!localStorage.getItem('pendingVerification')) {
         return { name: 'register' }
       }
+    }
+  },
+  {
+    path: '/admin/users',
+    name: 'admin',
+    component: () => import('../views/UserView.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ADMIN']
     }
   },
   {
