@@ -18,7 +18,7 @@ interface SortField {
   direction: 'asc' | 'desc'
 }
 
-interface AdminState {
+export interface AdminState {
   users: User[]
   selectedUser: User | null
   isLoading: boolean
@@ -49,64 +49,35 @@ export const useAdminStore = defineStore('admin', {
   }),
 
   getters: {
-    // Get filtered and sorted users
-    filteredUsers: (state): User[] => {
-      let filtered = [...state.users]
-
-      // Apply role filter
-      if (state.filters.role) {
-        filtered = filtered.filter(user => user.role_name === state.filters.role)
-      }
-
-      // Apply status filter
-      if (state.filters.status !== 'all') {
-        filtered = filtered.filter(user => {
-          if (state.filters.status === 'active') return !user.is_deleted
-          return user.is_deleted
-        })
-      }
-
-      // Apply search filter
-      if (state.filters.search) {
-        const searchLower = state.filters.search.toLowerCase()
-        filtered = filtered.filter(user =>
-          user.username.toLowerCase().includes(searchLower) ||
-          user.email.toLowerCase().includes(searchLower) ||
-          user.full_name.toLowerCase().includes(searchLower)
-        )
-      }
-
-      // Apply sorting
-      if (state.sort.field !== null) {
-        filtered.sort((a, b) => {
-          const aValue = a[state.sort.field as keyof User]
-          const bValue = b[state.sort.field as keyof User]
-          const modifier = state.sort.direction === 'asc' ? 1 : -1
-
-          if (aValue < bValue) return -1 * modifier
-          if (aValue > bValue) return 1 * modifier
-          return 0
-        })
-      }
-
-      return filtered
-    }
+    filteredUsers: (state) => state.users
   },
 
   actions: {
-    // Fetch all users
+    // Fetch users with filters
     async fetchUsers() {
       this.isLoading = true
       this.error = null
       
       try {
-        const response = await api.get<User[]>('/admin/users')
-        this.users = response.data
+          // Build query parameters
+          const params = new URLSearchParams()
+          if (this.filters.role) {
+              params.append('role', this.filters.role)
+          }
+          if (this.filters.status !== 'all') {
+              params.append('status', this.filters.status)
+          }
+          if (this.filters.search) {
+              params.append('search', this.filters.search)
+          }
+
+          const response = await api.get<User[]>('/admin/users', { params })
+          this.users = response.data
       } catch (error: any) {
-        this.error = error.response?.data?.detail || 'Failed to fetch users'
-        throw error
+          this.error = error.response?.data?.detail || 'Failed to fetch users'
+          throw error
       } finally {
-        this.isLoading = false
+          this.isLoading = false
       }
     },
 
@@ -159,11 +130,12 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // Update filters
-    setFilters(newFilters: Partial<AdminState['filters']>) {
+    async setFilters(newFilters: Partial<AdminState['filters']>) {
       this.filters = {
         ...this.filters,
         ...newFilters
       }
+      await this.fetchUsers() // Fetch new data with updated filters
     },
 
     // Update sort

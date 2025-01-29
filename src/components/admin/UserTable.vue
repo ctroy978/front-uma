@@ -133,10 +133,11 @@
   
   <script setup lang="ts">
   import { computed } from 'vue'
-  import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-  import { useAdminStore } from '@/stores/admin'
-  import { useAuthStore } from '@/stores/auth'
-  import type { User } from '@/stores/admin'
+  //import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+  import { LucideChevronUp, LucideChevronDown, LucideChevronsUpDown } from 'lucide-vue-next'
+  import { useAdminStore } from '../../stores/admin'
+  import { useAuthStore } from '../../stores/auth'
+  import type { User } from '../../stores/admin'
   
   // Stores
   const adminStore = useAdminStore()

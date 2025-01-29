@@ -101,7 +101,6 @@ const handleSubmit = async () => {
       email: email.value
     });
     
-    console.log('Login initiation response:', response.data);
     
     // Clear any existing state
     localStorage.clear();
