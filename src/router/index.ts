@@ -72,6 +72,35 @@ const routes: RouteRecordRaw[] = [
       allowedRoles: ['ADMIN']
     }
   },
+
+  // New Teacher Routes
+  {
+    path: '/teacher',
+    component: () => import('../components/teacher/TeacherLayout.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['TEACHER', 'ADMIN']
+    },
+    children: [
+      {
+        path: '',
+        name: 'teacher-dashboard',
+        component: () => import('../views/DashboardView.vue')
+      },
+      {
+        path: 'texts',
+        name: 'teacher-texts',
+        component: () => import('../views/TextListView.vue')
+      },
+      {
+        path: 'create',
+        name: 'create-text',
+        component: () => import('../views/CreateTextView.vue')
+      }
+    ]
+  },
+
+
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
