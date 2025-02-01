@@ -139,7 +139,11 @@
               </td>
               <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium">
                 <router-link
-                  :to="{ name: 'view-text', params: { id: text.id }}"
+                  :to="{ 
+                    name: 'view-text', 
+                    params: { id: text.id },
+                    query: { from: 'teacher-dashboard' }
+                  }"
                   class="text-blue-600 hover:text-blue-900"
                 >
                   View
