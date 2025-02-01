@@ -143,27 +143,30 @@ export const useTextStore = defineStore('text', {
             }
         },
 
-        // New method to update text
-        async updateText(id: string, data: TextUpdateData, force: boolean = false): Promise<Text> {
+        // method to update text
+
+        async updateText(id: string, content: string, force: boolean = false) {
             this.isLoading = true
+            this.error = null
+
             try {
-                const response = await api.put(`/teacher/texts/${id}`, {
-                    metadata: data.metadata,
-                    content: data.content,
-                    force
+                // Create FormData for multipart request
+                const formData = new FormData()
+                formData.append('content', content)
+                formData.append('force', force.toString())
+
+                const response = await api.put<Text>(`/teacher/texts/${id}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
                 })
-                
-                // Update the texts list
+
+                // Update text in state
                 const index = this.texts.findIndex(t => t.id === id)
                 if (index !== -1) {
                     this.texts[index] = response.data
                 }
-                
-                // Update selected text if loaded
-                if (this.selectedText?.id === id) {
-                    this.selectedText = response.data
-                }
-                
+
                 return response.data
             } catch (error: any) {
                 this.error = error.response?.data?.detail || 'Failed to update text'
