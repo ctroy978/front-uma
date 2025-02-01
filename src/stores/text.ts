@@ -10,11 +10,6 @@ import type {
     Genre 
 } from '../types/text'
 
-interface ActiveAssessmentInfo {
-    count: number;
-    student_names: string[];
-}
-
 interface TextUpdateData {
     metadata: {
         grade_level: number;
@@ -24,6 +19,14 @@ interface TextUpdateData {
     };
     content: string;
 }
+
+
+export interface ActiveAssessmentInfo {
+    count: number;
+    student_names: string[];
+}
+
+
 
 export const useTextStore = defineStore('text', {
     state: (): TextState => ({
@@ -176,6 +179,8 @@ export const useTextStore = defineStore('text', {
             }
         },
 
+        
+
         setFilters(filters: Partial<TextState['filters']>) {
             this.filters = {
                 ...this.filters,
@@ -202,6 +207,31 @@ export const useTextStore = defineStore('text', {
             this.isLoading = false
             this.error = null
             this.resetFilters()
-        }
-    }
-})
+        },
+        
+        
+        
+                async deleteText(id: string, force: boolean = false) {
+                    this.isLoading = true
+                    this.error = null
+        
+                    try {
+                        await api.delete(`/teacher/texts/${id}`, {
+                            params: { force }
+                        })
+                        
+                        // Remove from local state
+                        this.texts = this.texts.filter(t => t.id !== id)
+                    } catch (error: any) {
+                        // Special handling for 409 Conflict (active assessments)
+                        if (error.response?.status === 409) {
+                            throw error.response.data
+                        }
+                        this.error = error.response?.data?.detail || 'Failed to delete text'
+                        throw error
+                    } finally {
+                        this.isLoading = false
+                    }
+                }
+            }
+        })
