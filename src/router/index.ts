@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw, NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
+
 // Route metadata type
 declare module 'vue-router' {
   interface RouteMeta {
@@ -72,6 +73,48 @@ const routes: RouteRecordRaw[] = [
       allowedRoles: ['ADMIN']
     }
   },
+
+  // New Teacher Routes
+
+{
+  path: '/teacher',
+  component: () => import('../components/teacher/TeacherLayout.vue'),
+  meta: {
+    requiresAuth: true,
+    allowedRoles: ['TEACHER', 'ADMIN']
+  },
+  children: [
+    {
+      path: '',
+      name: 'teacher-dashboard',
+      component: () => import('../views/DashboardView.vue')
+    },
+    {
+      path: 'texts',
+      name: 'teacher-texts',
+      component: () => import('../views/TextListView.vue')
+    },
+    {
+      path: 'texts/:id',
+      name: 'view-text',
+      component: () => import('../views/ViewTextView.vue'),
+      props: true
+    },
+    {
+      path: 'create',
+      name: 'create-text',
+      component: () => import('../views/CreateTextView.vue')
+    },
+    {
+      path: 'texts/:id/edit',
+      name: 'edit-text',
+      component: () => import('@/views/EditTextView.vue'),
+      props: true
+    }
+  ]
+},
+
+
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
