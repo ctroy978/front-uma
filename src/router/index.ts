@@ -120,7 +120,24 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
     meta: { public: true }
-  }
+  },
+  {
+  path: '/student',
+  component: () => import('@/components/student/StudentLayout.vue'),
+  children: [
+    {
+      path: '',
+      name: 'student-dashboard',
+      component: () => import('@/views/student/DashboardView.vue')
+    },
+    {
+      path: 'teacher/:id',
+      name: 'teacher-texts',
+      component: () => import('@/views/student/TeacherTextsView.vue'),
+      props: true
+    }
+  ]
+}
 ]
 
 const router = createRouter({

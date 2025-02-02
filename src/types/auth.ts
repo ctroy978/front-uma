@@ -88,3 +88,7 @@ export interface AuthError {
   message: string
   timestamp: number
 }
+
+export interface LogoutResponse {
+  message: string;
+}
