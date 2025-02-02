@@ -10,7 +10,9 @@ import type {
   LoginPayload,
   LoginVerificationPayload,
   LoginResponse,
+  LogoutResponse,
 } from '@/types/auth'
+import api from '../utils/axios'
 
 export const useAuthStore = defineStore('auth', {
   state: (): ExtendedAuthState => ({
@@ -227,15 +229,15 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       try {
-        this.loading = true
-        await axios.post('/auth/logout')
+          this.loading = true
+          await api.post<LogoutResponse>('/auth/logout')
       } catch (error) {
-        console.error('Logout error:', error)
+          console.error('Logout error:', error)
       } finally {
-        this.clearAuthenticationData()
-        this.loading = false
+          this.clearAuthenticationData()
+          this.loading = false
       }
-    },
+  },
 
     clearAuthenticationData() {
       // Clear authentication state
