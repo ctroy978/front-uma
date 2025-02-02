@@ -149,7 +149,7 @@
   const viewTeacher = (teacherId: string) => {
     studentStore.selectTeacher(teacherId)
     router.push({ 
-      name: 'teacher-texts',
+      name: 'student-teacher-texts',
       params: { id: teacherId }
     })
   }

@@ -23,7 +23,7 @@
                 </router-link>
                 
                 <router-link
-                  :to="{ name: 'teacher-texts' }"
+                  :to="{ name: 'teacher-texts-list' }"
                   class="group flex items-center px-2 py-2 text-sm font-medium rounded-md"
                   :class="[
                     isTextRoute

@@ -78,7 +78,7 @@ const routes: RouteRecordRaw[] = [
 
 {
   path: '/teacher',
-  component: () => import('../components/teacher/TeacherLayout.vue'),
+  component: () => import('@/components/teacher/TeacherLayout.vue'),
   meta: {
     requiresAuth: true,
     allowedRoles: ['TEACHER', 'ADMIN']
@@ -87,23 +87,23 @@ const routes: RouteRecordRaw[] = [
     {
       path: '',
       name: 'teacher-dashboard',
-      component: () => import('../views/DashboardView.vue')
+      component: () => import('@/views/DashboardView.vue')
     },
     {
       path: 'texts',
-      name: 'teacher-texts',
-      component: () => import('../views/TextListView.vue')
+      name: 'teacher-texts-list',
+      component: () => import('@/views/TextListView.vue')
     },
     {
       path: 'texts/:id',
       name: 'view-text',
-      component: () => import('../views/ViewTextView.vue'),
+      component: () => import('@/views/ViewTextView.vue'),
       props: true
     },
     {
       path: 'create',
       name: 'create-text',
-      component: () => import('../views/CreateTextView.vue')
+      component: () => import('@/views/CreateTextView.vue')
     },
     {
       path: 'texts/:id/edit',
@@ -118,7 +118,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: () => import('../views/NotFoundView.vue'),
+    component: () => import('@/views/NotFoundView.vue'),
     meta: { public: true }
   },
   {
@@ -132,7 +132,7 @@ const routes: RouteRecordRaw[] = [
     },
     {
       path: 'teacher/:id',
-      name: 'teacher-texts',
+      name: 'student-teacher-texts',
       component: () => import('@/views/student/TeacherTextsView.vue'),
       props: true
     }
