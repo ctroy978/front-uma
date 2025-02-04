@@ -115,6 +115,36 @@ const routes: RouteRecordRaw[] = [
 },
 
 
+// Add to your existing routes array in router/index.ts
+
+{
+  path: '/student',
+  component: () => import('@/components/student/StudentLayout.vue'),
+  meta: {
+    requiresAuth: true,
+    allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']  // Make sure STUDENT role is included
+  },
+  children: [
+    {
+      path: 'assessment/:textId',
+      name: 'student-assessment',
+      component: () => import('@/components/student/AssessmentView.vue'),
+      props: true,
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']  // Explicitly allow STUDENT role
+      }
+    }
+  ]
+},
+{
+  path: '/unauthorized',
+  name: 'unauthorized',
+  component: () => import('@/views/UnauthorizedView.vue'),
+  meta: { public: true }
+},
+
+
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',

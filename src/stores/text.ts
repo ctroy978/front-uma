@@ -1,6 +1,6 @@
 // src/stores/text.ts
 import { defineStore } from 'pinia'
-import api from '../utils/axios'
+import api from '@/utils/axios'
 import type { 
     Text, 
     TextState, 
@@ -8,7 +8,7 @@ import type {
     TextForm,
     PrimaryType,
     Genre 
-} from '../types/text'
+} from '@/types/text'
 
 interface TextUpdateData {
     metadata: {

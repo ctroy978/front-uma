@@ -8,13 +8,13 @@
       </div>
   
       <!-- Error State -->
-      <BaseAlert
+       <BaseAlert
         v-if="error"
         v-model="showError"
         variant="error"
         :message="error"
         dismissible
-      />
+     ></BaseAlert>
   
       <!-- Content -->
       <div v-if="!isLoading" class="space-y-6">
@@ -287,7 +287,7 @@
   
   const startReading = (textId: string) => {
     router.push({ 
-      name: 'assessment',
+      name: 'student-assessment',
       params: { textId }
     })
   }

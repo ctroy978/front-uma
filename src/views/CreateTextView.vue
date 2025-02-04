@@ -76,6 +76,8 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import TextMetadataForm from '@/components/teacher/TextMetadataForm.vue'
 import TextContentEditor from '@/components/teacher/TextContentEditor.vue'
 import { useTextStore } from '@/stores/text'
+import { TextForm, PrimaryType, Genre } from '../types/text'
+
 
 const router = useRouter()
 const textStore = useTextStore()
