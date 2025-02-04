@@ -126,13 +126,13 @@ const routes: RouteRecordRaw[] = [
   },
   children: [
     {
-      path: 'assessment/:textId',
+      path: '/student/assessment/:textId',
       name: 'student-assessment',
-      component: () => import('@/components/student/AssessmentView.vue'),
+      component: () => import('@/views/student/AssessmentView.vue'),
       props: true,
       meta: {
         requiresAuth: true,
-        allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']  // Explicitly allow STUDENT role
+        allowedRoles: ['STUDENT', 'TEACHER']
       }
     }
   ]
