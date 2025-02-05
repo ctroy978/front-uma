@@ -30,7 +30,6 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
-    
       path: '/verify-login/:email',
       name: 'verify-login',
       component: () => import('../views/VerifyLoginView.vue'),
@@ -42,9 +41,6 @@ const routes: RouteRecordRaw[] = [
               return { name: 'login' }
           }
       }
-  
-
-
    },
   {
     path: '/register',
@@ -115,27 +111,41 @@ const routes: RouteRecordRaw[] = [
 },
 
 
-// Add to your existing routes array in router/index.ts
-
 {
   path: '/student',
   component: () => import('@/components/student/StudentLayout.vue'),
   meta: {
     requiresAuth: true,
-    allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']  // Make sure STUDENT role is included
+    allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']
   },
   children: [
     {
-      path: '/student/assessment/:textId',
-      name: 'student-assessment',
-      component: () => import('@/views/student/AssessmentView.vue'),
-      props: true,
-      meta: {
-        requiresAuth: true,
-        allowedRoles: ['STUDENT', 'TEACHER']
-      }
+      path: '',
+      redirect: { name: 'student-dashboard' }
+    },
+    {
+      path: 'dashboard',
+      name: 'student-dashboard',
+      component: () => import('@/views/student/DashboardView.vue')
+    },
+    {
+      path: 'teacher/:id',
+      name: 'student-teacher-texts',
+      component: () => import('@/views/student/TeacherTextsView.vue'),
+      props: true
     }
   ]
+},
+// Separate reading route
+{
+  path: '/reading/:textId',
+  name: 'student-reading',
+  component: () => import('@/components/student/reading/ReadingContainer.vue'),
+  props: true,
+  meta: {
+    requiresAuth: true,
+    allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']
+  }
 },
 {
   path: '/unauthorized',

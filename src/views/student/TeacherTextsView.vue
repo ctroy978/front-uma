@@ -287,50 +287,27 @@
     sorting.value.direction = sorting.value.direction === 'asc' ? 'desc' : 'asc'
   }
   
-// In TeacherTextsView.vue
-
-// In TeacherTextsView.vue
-
-const startReading = async (textId: string) => {
+  const startReading = async (textId: string) => {
   try {
-    isLoading.value = true
-    showError.value = false
-    error.value = ''
+    isLoading.value = true;
+    showError.value = false;
+    error.value = '';
 
-    // Add debugging for the API call
-    const response = await api.post(`/assessment/start/${textId}`)
-    console.log('Assessment API Response:', response.data)  // Debug log
-
-    // Verify we have the expected data
-    if (!response.data || !response.data.content) {
-      throw new Error('Invalid response format from server')
-    }
-
-    // If successful, route to assessment view
+    // Navigate to reading view using the new path
     await router.push({ 
-      name: 'student-assessment',
+      name: 'student-reading',
       params: { 
         textId: textId
-      },
-      state: {
-        initialChunk: response.data
       }
-    })
+    });
   } catch (err: any) {
-    console.error('Start Reading Error:', err)  // Debug log
-    showError.value = true
-    if (err.response) {
-      console.log('Error Response:', err.response)  // Debug log
-      error.value = err.response.data?.detail || 'Unable to start assessment. Please try again.'
-    } else if (err.message) {
-      error.value = err.message
-    } else {
-      error.value = 'Unable to start assessment. Please try again.'
-    }
+    console.error('Start Reading Error:', err);
+    showError.value = true;
+    error.value = 'Unable to start reading. Please try again.';
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
   
   // Lifecycle
   onMounted(async () => {
