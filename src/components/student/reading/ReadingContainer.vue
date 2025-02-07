@@ -38,10 +38,18 @@
           />
 
           <!-- Text Card -->
-          <div v-if="currentChunk && !isLoading" class="bg-white shadow rounded-lg p-6 mb-6">
-            <div class="prose prose-lg max-w-none">
-              <div class="whitespace-pre-wrap break-words font-normal text-gray-900 text-xl leading-relaxed">
-                {{ currentChunk.content }}
+          <div v-if="currentChunk && !isLoading" class="bg-white shadow rounded-lg">
+            <!-- Title -->
+            <div class="px-6 pt-6 border-b border-gray-200">
+              <h1 class="text-2xl font-bold text-gray-900 pb-4">{{ readingStore.textTitle }}</h1>
+            </div>
+            
+            <!-- Content -->
+            <div class="p-6">
+              <div class="prose prose-lg max-w-none">
+                <div class="whitespace-pre-wrap break-words font-normal text-gray-900 text-xl leading-relaxed">
+                  {{ currentChunk.content }}
+                </div>
               </div>
             </div>
           </div>

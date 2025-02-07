@@ -11,6 +11,7 @@ interface Chunk {
 
 interface ReadingState {
     currentChunk: Chunk | null;
+    textTitle: string;  // Add title to state
     assessmentId: string | null;
     isLoading: boolean;
     error: string | null;
@@ -19,6 +20,7 @@ interface ReadingState {
 export const useReadingStore = defineStore('reading', {
     state: (): ReadingState => ({
         currentChunk: null,
+        textTitle: '',  // Initialize title as empty string
         assessmentId: null,
         isLoading: false,
         error: null
@@ -32,6 +34,7 @@ export const useReadingStore = defineStore('reading', {
             try {
                 const response = await api.post(`/assessment/start/${textId}`);
                 this.currentChunk = response.data.chunk;
+                this.textTitle = response.data.text_title;  // Set the title from response
                 this.assessmentId = response.data.assessment_id;
             } catch (error: any) {
                 this.error = error.response?.data?.detail || 'Failed to start reading';
@@ -63,6 +66,7 @@ export const useReadingStore = defineStore('reading', {
 
         resetState() {
             this.currentChunk = null;
+            this.textTitle = '';  // Reset title
             this.assessmentId = null;
             this.isLoading = false;
             this.error = null;
