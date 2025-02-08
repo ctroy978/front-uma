@@ -9,9 +9,16 @@ interface Chunk {
     has_next: boolean;
 }
 
+interface Question {
+    category: string;
+    question_text: string;
+    assessment_id: string;
+}
+
 interface ReadingState {
     currentChunk: Chunk | null;
-    textTitle: string;  // Add title to state
+    currentQuestion: Question | null;
+    textTitle: string;
     assessmentId: string | null;
     isLoading: boolean;
     error: string | null;
@@ -20,7 +27,8 @@ interface ReadingState {
 export const useReadingStore = defineStore('reading', {
     state: (): ReadingState => ({
         currentChunk: null,
-        textTitle: '',  // Initialize title as empty string
+        currentQuestion: null,
+        textTitle: '',
         assessmentId: null,
         isLoading: false,
         error: null
@@ -34,8 +42,11 @@ export const useReadingStore = defineStore('reading', {
             try {
                 const response = await api.post(`/assessment/start/${textId}`);
                 this.currentChunk = response.data.chunk;
-                this.textTitle = response.data.text_title;  // Set the title from response
+                this.textTitle = response.data.text_title;
                 this.assessmentId = response.data.assessment_id;
+                
+                // Get initial question
+                await this.fetchCurrentQuestion();
             } catch (error: any) {
                 this.error = error.response?.data?.detail || 'Failed to start reading';
                 throw error;
@@ -56,6 +67,9 @@ export const useReadingStore = defineStore('reading', {
             try {
                 const response = await api.get(`/assessment/next/${this.assessmentId}`);
                 this.currentChunk = response.data;
+                
+                // Get question for new chunk
+                await this.fetchCurrentQuestion();
             } catch (error: any) {
                 this.error = error.response?.data?.detail || 'Failed to fetch next chunk';
                 throw error;
@@ -64,12 +78,46 @@ export const useReadingStore = defineStore('reading', {
             }
         },
 
+        async fetchCurrentQuestion() {
+            if (!this.assessmentId) {
+                this.error = 'No active assessment';
+                return;
+            }
+
+            try {
+                const response = await api.get(`/questions/current/${this.assessmentId}`);
+                this.currentQuestion = response.data;
+            } catch (error: any) {
+                this.error = error.response?.data?.detail || 'Failed to fetch question';
+                throw error;
+            }
+        },
+
+        async submitAnswer(isCorrect: boolean) {
+            if (!this.assessmentId) {
+                this.error = 'No active assessment';
+                return;
+            }
+
+            try {
+                const response = await api.post('/questions/answer', {
+                    assessment_id: this.assessmentId,
+                    is_correct: isCorrect
+                });
+                this.currentQuestion = response.data;
+            } catch (error: any) {
+                this.error = error.response?.data?.detail || 'Failed to submit answer';
+                throw error;
+            }
+        },
+
         resetState() {
             this.currentChunk = null;
-            this.textTitle = '';  // Reset title
+            this.currentQuestion = null;
+            this.textTitle = '';
             this.assessmentId = null;
             this.isLoading = false;
             this.error = null;
         }
     }
-})
+});

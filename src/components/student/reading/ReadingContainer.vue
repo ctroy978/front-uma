@@ -55,7 +55,7 @@
           </div>
 
           <!-- Navigation Buttons -->
-          <div v-if="currentChunk && !isLoading" class="bg-white shadow rounded-lg p-6">
+          <div v-if="currentChunk && !isLoading" class="mt-6">
             <div class="flex justify-between items-center">
               <BaseButton
                 variant="default"
@@ -84,9 +84,9 @@
           </div>
         </div>
 
-        <!-- Right Side Space -->
+        <!-- Question Section -->
         <div class="w-2/5">
-          <!-- Reserved for future features -->
+          <QuestionPanel v-if="currentChunk && !isLoading" />
         </div>
       </div>
     </div>
@@ -94,13 +94,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import QuestionPanel from './QuestionPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
