@@ -41,7 +41,7 @@
           <div v-if="currentChunk && !isLoading" class="bg-white shadow rounded-lg">
             <!-- Title -->
             <div class="px-6 pt-6 border-b border-gray-200">
-              <h1 class="text-2xl font-bold text-gray-900 pb-4">{{ readingStore.textTitle }}</h1>
+              <h1 class="text-2xl font-bold text-gray-900 pb-4">{{ textTitle }}</h1>
             </div>
             
             <!-- Content -->
@@ -59,7 +59,7 @@
             <div class="flex justify-between items-center">
               <BaseButton
                 variant="default"
-                :disabled="!canGoBack"
+                :disabled="!canGoBack || navigationLoading"
                 @click="handleBack"
               >
                 Previous
@@ -68,14 +68,16 @@
               <BaseButton
                 v-if="currentChunk.has_next"
                 variant="primary"
-                :loading="isLoading"
+                :disabled="!canProgress || navigationLoading"
+                :loading="navigationLoading"
                 @click="handleNext"
               >
-                Next
+                Next Section
               </BaseButton>
               <BaseButton
                 v-else
                 variant="success"
+                :disabled="!canProgress"
                 @click="handleComplete"
               >
                 Complete Reading
@@ -90,6 +92,16 @@
         </div>
       </div>
     </div>
+
+    <!-- Completion Dialog -->
+    <BaseDialog
+      v-model="showCompletionDialog"
+      title="Complete Reading?"
+      content="Are you sure you want to complete this reading assessment? This will end your current session."
+      confirm-text="Complete"
+      cancel-text="Continue Reading"
+      @confirm="confirmComplete"
+    />
   </div>
 </template>
 
@@ -101,35 +113,70 @@ import { ArrowLeft } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseDialog from '@/components/base/BaseDialog.vue'
 import QuestionPanel from './QuestionPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const readingStore = useReadingStore()
 
+// Local state
 const showError = ref(false)
-const canGoBack = ref(false) // This will be implemented when we add previous functionality
+const canGoBack = ref(false)
+const navigationLoading = ref(false)
+const showCompletionDialog = ref(false)
 
-// Using storeToRefs to maintain reactivity
-const { currentChunk, isLoading, error } = storeToRefs(readingStore)
+// Store state using storeToRefs for reactivity
+const { 
+  currentChunk, 
+  isLoading, 
+  error, 
+  textTitle,
+  canProgress,
+  feedback 
+} = storeToRefs(readingStore)
 
 // Methods
 const handleNext = async () => {
+  if (!canProgress.value) return
+  
   try {
+    navigationLoading.value = true
     await readingStore.getNextChunk()
   } catch (err) {
     showError.value = true
+  } finally {
+    navigationLoading.value = false
   }
 }
 
 const handleBack = () => {
-  // For now, just return to dashboard
-  router.push({ name: 'student-dashboard' })
+  if (canGoBack.value) {
+    // TODO: Implement back navigation when available
+    return
+  }
+  // For now, show confirmation before leaving
+  if (feedback.value) {
+    showCompletionDialog.value = true
+  } else {
+    router.push({ name: 'student-dashboard' })
+  }
 }
 
 const handleComplete = () => {
-  // Will implement completion logic later
-  router.push({ name: 'student-dashboard' })
+  showCompletionDialog.value = true
+}
+
+const confirmComplete = async () => {
+  try {
+    // TODO: Add completion API call when available
+    router.push({ 
+      name: 'student-dashboard',
+      query: { completed: 'true' }
+    })
+  } catch (err) {
+    showError.value = true
+  }
 }
 
 // Lifecycle hooks
@@ -144,5 +191,21 @@ onMounted(async () => {
 
 onUnmounted(() => {
   readingStore.resetState()
+})
+
+// Navigation guard
+const beforeUnload = (e: BeforeUnloadEvent) => {
+  if (feedback.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', beforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
 })
 </script>
