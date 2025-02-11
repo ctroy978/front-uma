@@ -22,27 +22,27 @@
       </p>
 
       <!-- Answer Form -->
-      <form @submit.prevent="handleSubmit" class="space-y-4">
-        <BaseInput
-          v-model="answerInput"
-          name="answer"
-          label="Your Answer"
-          placeholder="Type your answer here..."
-          :disabled="isSubmitting"
-          :error="error"
-          required
-        />
+<form @submit.prevent="handleSubmit" class="space-y-4">
+  <BaseTextarea
+    v-model="answerInput"
+    name="answer"
+    label="Your Answer"
+    placeholder="Type your answer here. Be sure to explain your reasoning and use evidence from the text."
+    :disabled="isSubmitting"
+    :error="error"
+    required
+  />
 
-        <BaseButton
-          type="submit"
-          variant="primary"
-          :loading="isSubmitting"
-          :disabled="!answerInput.trim() || isSubmitting"
-          class="w-full"
-        >
-          Submit Answer
-        </BaseButton>
-      </form>
+  <BaseButton
+    type="submit"
+    variant="primary"
+    :loading="isSubmitting"
+    :disabled="!answerInput.trim() || isSubmitting"
+    class="w-full"
+  >
+    Submit Answer
+  </BaseButton>
+</form>
 
       <!-- Feedback Display -->
       <TransitionGroup
@@ -87,14 +87,22 @@
         </div>
 
         <!-- Progress Status -->
-        <div 
+        <button 
           v-if="isCorrect && canProgress" 
           :key="'progress'"
-          class="mt-4 flex items-center justify-center bg-blue-50 text-blue-700 p-4 rounded-md border border-blue-200"
+          class="mt-4 w-full flex items-center justify-center bg-blue-50 hover:bg-blue-100 
+                text-blue-700 p-4 rounded-md border border-blue-200 transition-colors"
+          :disabled="navigationLoading"
+          @click="handleNext"
         >
-          <ArrowRight class="h-5 w-5 mr-2" />
-          <span class="text-sm font-medium">Ready to proceed! Click Next to continue.</span>
-        </div>
+          <div v-if="navigationLoading" class="mr-2">
+            <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <ArrowRight v-else class="h-5 w-5 mr-2" />
+          <span class="text-sm font-medium">
+            {{ navigationLoading ? 'Loading next section...' : 'Click here or press Next to continue' }}
+          </span>
+        </button>
       </TransitionGroup>
     </div>
 
@@ -122,10 +130,11 @@ import { CheckCircle, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
-import BaseInput from '@/components/base/BaseInput.vue'
+import BaseTextarea from '@/components/base/BaseTextarea.vue'
+
 
 const readingStore = useReadingStore()
-const { currentQuestion, isLoading, error, feedback, canProgress, isSubmitting } = storeToRefs(readingStore)
+const { currentQuestion, isLoading, error, feedback, canProgress, isSubmitting, navigationLoading } = storeToRefs(readingStore)
 
 // Local state
 const answerInput = ref('')
@@ -160,6 +169,14 @@ const handleSubmit = async () => {
   try {
     await readingStore.submitAnswer(answerInput.value)
     answerInput.value = '' // Clear input after submission
+  } catch (err) {
+    showError.value = true
+  }
+}
+
+const handleNext = async () => {
+  try {
+    await readingStore.handleNavigation()
   } catch (err) {
     showError.value = true
   }

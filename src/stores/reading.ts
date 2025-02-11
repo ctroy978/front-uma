@@ -33,6 +33,7 @@ interface ReadingState {
   feedback: string | null
   canProgress: boolean
   isSubmitting: boolean
+  navigationLoading: boolean
 }
 
 export const useReadingStore = defineStore('reading', {
@@ -45,7 +46,9 @@ export const useReadingStore = defineStore('reading', {
     error: null,
     feedback: null,
     canProgress: false,
-    isSubmitting: false
+    isSubmitting: false,
+    navigationLoading: false 
+
   }),
 
   getters: {
@@ -150,6 +153,23 @@ export const useReadingStore = defineStore('reading', {
       }
     },
 
+  async handleNavigation() {
+    if (!this.canProgress) return
+
+    this.navigationLoading = true
+    this.error = null
+    
+    try {
+      await this.getNextChunk()
+      return true
+    } catch (error: any) {
+      this.error = error.response?.data?.detail || 'Failed to navigate'
+      throw error
+    } finally {
+      this.navigationLoading = false
+    }
+  },
+
     resetQuestionState() {
       this.currentQuestion = null
       this.feedback = null
@@ -166,6 +186,8 @@ export const useReadingStore = defineStore('reading', {
       this.feedback = null
       this.canProgress = false
       this.isSubmitting = false
+      this.navigationLoading = false  
+
     }
   }
 })

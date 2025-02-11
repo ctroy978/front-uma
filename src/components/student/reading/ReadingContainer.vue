@@ -123,7 +123,6 @@ const readingStore = useReadingStore()
 // Local state
 const showError = ref(false)
 const canGoBack = ref(false)
-const navigationLoading = ref(false)
 const showCompletionDialog = ref(false)
 
 // Store state using storeToRefs for reactivity
@@ -133,20 +132,17 @@ const {
   error, 
   textTitle,
   canProgress,
-  feedback 
+  feedback,
+  navigationLoading
+
 } = storeToRefs(readingStore)
 
 // Methods
 const handleNext = async () => {
-  if (!canProgress.value) return
-  
   try {
-    navigationLoading.value = true
-    await readingStore.getNextChunk()
+    await readingStore.handleNavigation()
   } catch (err) {
     showError.value = true
-  } finally {
-    navigationLoading.value = false
   }
 }
 
