@@ -127,8 +127,13 @@
   const isAuthenticated = computed(() => authStore.isAuthenticated)
   
   const handleLogout = async () => {
+  try {
     await authStore.logout()
+  } catch (error) {
+    console.error('Logout error:', error)
+    // Even if logout fails, cleanup will have run
+  } finally {
     isMobileMenuOpen.value = false
-    router.push({ name: 'login' })
   }
+}
   </script>

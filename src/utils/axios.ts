@@ -98,15 +98,12 @@ api.interceptors.response.use(
             createAuthError('TOKEN_ERROR', 'Token refresh failed')
           )
         })
-        await authStore.logout()
+        authStore.cleanup() // Use cleanup instead of full logout
         return Promise.reject(
           createAuthError('SESSION_ERROR', 'Session expired')
         )
-      } finally {
-        isRefreshing = false
-        pendingRequests = []
       }
-    }
+      }
 
     // Handle 403 Forbidden errors
     if (error.response?.status === 403) {

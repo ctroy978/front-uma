@@ -1,6 +1,10 @@
 // src/stores/auth.ts
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
+import api from '../utils/axios'
+
+
 import type { 
   UserRegistration, 
   VerificationPayload,
@@ -12,7 +16,6 @@ import type {
   LoginResponse,
   LogoutResponse,
 } from '@/types/auth'
-import api from '../utils/axios'
 
 export const useAuthStore = defineStore('auth', {
   state: (): ExtendedAuthState => ({
@@ -284,6 +287,42 @@ export const useAuthStore = defineStore('auth', {
       } else {
         // If token is undefined or missing, clear everything
         this.clearAuthenticationData()
+      }
+    },
+    // Add after initialize() method
+    cleanup() {
+      // Clear authentication state
+      this.isAuthenticated = false
+      this.tokens = null
+      this.currentUser = null
+      this.lastActivity = null
+      this.pendingVerification = null
+      this.loading = false
+      this.error = null
+      this.registrationStep = 'initial'
+      this.userId = null
+      this.userRole = null
+
+      // Clear local storage
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('pendingLoginVerification')
+      localStorage.removeItem('pendingLoginEmail')
+      localStorage.removeItem('pendingVerification')
+    },
+
+    // Replace the existing logout method with this
+    async logout() {
+      try {
+          this.loading = true
+          if (this.tokens?.access_token) {
+              await api.post<LogoutResponse>('/auth/logout')
+          }
+      } catch (error) {
+          console.error('Logout error:', error)
+      } finally {
+          this.cleanup()
+          this.loading = false
       }
     }
   }
