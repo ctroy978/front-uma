@@ -231,16 +231,31 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      this.loading = true;
+      
       try {
-          this.loading = true
-          await api.post<LogoutResponse>('/auth/logout')
+        // Configure axios to not reject on any status code for logout
+        const response = await api.post<LogoutResponse>('/auth/logout', {}, {
+          validateStatus: (status) => true // Accept any status code
+        });
+        
+        // Log non-200 responses but don't throw
+        if (response.status !== 200) {
+          console.warn('Logout API warning:', response.status, response.data);
+        }
       } catch (error) {
-          console.error('Logout error:', error)
+        // Only log network/connection errors
+        console.error('Logout network error:', error);
       } finally {
-          this.clearAuthenticationData()
-          this.loading = false
+        // Always perform cleanup
+        this.cleanup();
+        this.loading = false;
+        
+        // Force navigation to login
+        const router = useRouter();
+        router.push({ name: 'login' });
       }
-  },
+    },
 
     clearAuthenticationData() {
       // Clear authentication state
@@ -310,20 +325,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('pendingLoginEmail')
       localStorage.removeItem('pendingVerification')
     },
+    clearAuthCookies() {
+      // Clear cookies by setting expired date
+      const pastDate = new Date(0).toUTCString();
+      document.cookie = 'refresh_token=; expires=' + pastDate + '; path=/; secure; samesite=lax';
+    },
 
-    // Replace the existing logout method with this
-    async logout() {
-      try {
-          this.loading = true
-          if (this.tokens?.access_token) {
-              await api.post<LogoutResponse>('/auth/logout')
-          }
-      } catch (error) {
-          console.error('Logout error:', error)
-      } finally {
-          this.cleanup()
-          this.loading = false
-      }
-    }
   }
-})
+}
+)
