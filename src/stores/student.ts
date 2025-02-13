@@ -49,6 +49,16 @@ export const useStudentStore = defineStore('student', {
       }
     },
 
+  async fetchAssessmentStatus(textId: string) {
+    try {
+      const response = await api.get(`/assessment/status/${textId}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Failed to fetch assessment status:', error)
+      return { has_active_assessment: false, assessment_id: null }
+    }
+  },
+
     selectTeacher(teacherId: string) {
       this.selectedTeacherId = teacherId
     },
@@ -78,5 +88,6 @@ export const useStudentStore = defineStore('student', {
       this.isLoading = false
       this.error = null
     }
-  }
+  },
+  
 })
