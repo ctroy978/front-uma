@@ -33,7 +33,7 @@
             v-if="error"
             v-model="showError"
             variant="error"
-            :message="error"
+            :message="error || ''"
             dismissible
           />
 
@@ -86,21 +86,24 @@
           </div>
         </div>
 
-        <!-- Question Section -->
-        <div class="w-2/5">
-          <QuestionPanel v-if="currentChunk && !isLoading" />
-        </div>
+ <!-- Question Section -->
+ <div class="w-2/5">
+    <QuestionPanel 
+      v-if="currentChunk && !isLoading" 
+      @complete="handleComplete"
+    />
+  </div>
       </div>
     </div>
 
     <!-- Completion Dialog -->
     <BaseDialog
       v-model="showCompletionDialog"
-      title="Complete Reading?"
-      content="Are you sure you want to complete this reading assessment? This will end your current session."
-      confirm-text="Complete"
-      cancel-text="Continue Reading"
-      @confirm="confirmComplete"
+      title="Reading Complete"
+      :content="completionMessage"
+      confirm-text="Return to Dashboard"
+      cancel-text="Stay on Page"
+      @confirm="navigateToDashboard"
     />
   </div>
 </template>
@@ -124,6 +127,7 @@ const readingStore = useReadingStore()
 const showError = ref(false)
 const canGoBack = ref(false)
 const showCompletionDialog = ref(false)
+const completionMessage = ref('')
 
 // Store state using storeToRefs for reactivity
 const { 
@@ -133,25 +137,39 @@ const {
   textTitle,
   canProgress,
   feedback,
-  navigationLoading
-
+  navigationLoading,
+  assessmentId
 } = storeToRefs(readingStore)
 
 // Methods
 const handleNext = async () => {
   try {
-    await readingStore.handleNavigation()
+    const result = await readingStore.handleNavigation()
+    
+    if (result.completed && result.message) {
+      completionMessage.value = result.message
+      showCompletionDialog.value = true
+    }
   } catch (err) {
     showError.value = true
   }
 }
 
+const navigateToDashboard = () => {
+  router.push({ 
+    name: 'student-dashboard',
+    query: { 
+      completed: 'true',
+      assessmentId: assessmentId.value
+    }
+  })
+}
+
 const handleBack = () => {
   if (canGoBack.value) {
-    // TODO: Implement back navigation when available
     return
   }
-  // For now, show confirmation before leaving
+  
   if (feedback.value) {
     showCompletionDialog.value = true
   } else {
@@ -159,22 +177,18 @@ const handleBack = () => {
   }
 }
 
-const handleComplete = () => {
-  showCompletionDialog.value = true
-}
-
-const confirmComplete = async () => {
+const handleComplete = async () => {
   try {
-    // TODO: Add completion API call when available
-    router.push({ 
-      name: 'student-dashboard',
-      query: { completed: 'true' }
-    })
+    const result = await readingStore.handleNavigation()
+    
+    if (result.completed && result.message) {
+      completionMessage.value = result.message
+      showCompletionDialog.value = true
+    }
   } catch (err) {
     showError.value = true
   }
 }
-
 // Lifecycle hooks
 onMounted(async () => {
   const textId = route.params.textId as string
@@ -196,6 +210,8 @@ const beforeUnload = (e: BeforeUnloadEvent) => {
     e.returnValue = ''
   }
 }
+
+
 
 onMounted(() => {
   window.addEventListener('beforeunload', beforeUnload)

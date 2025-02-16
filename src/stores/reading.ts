@@ -34,6 +34,22 @@ interface ReadingState {
   canProgress: boolean
   isSubmitting: boolean
   navigationLoading: boolean
+  isActive: boolean
+}
+
+interface CompletionResponse {
+  message: string;
+  completion_id: string;
+  assessment_id: string;
+  text_title: string;
+  days_remaining: number;
+  completion_triggered_at: string;
+}
+
+interface NavigationResult {
+  completed: boolean;
+  message?: string;
+  completion?: CompletionResponse;
 }
 
 export const useReadingStore = defineStore('reading', {
@@ -47,13 +63,15 @@ export const useReadingStore = defineStore('reading', {
     feedback: null,
     canProgress: false,
     isSubmitting: false,
-    navigationLoading: false 
-
+    navigationLoading: false,
+    isActive: false
   }),
 
   getters: {
     hasActiveAssessment: (state): boolean => !!state.assessmentId,
-    hasFeedback: (state): boolean => !!state.feedback
+    hasFeedback: (state): boolean => !!state.feedback,
+    isAssessmentActive: (state): boolean => state.isActive
+
   },
 
   actions: {
@@ -68,6 +86,7 @@ export const useReadingStore = defineStore('reading', {
         this.assessmentId = assessment_id
         this.textTitle = text_title
         this.currentChunk = chunk
+        this.isActive = true
 
         // Get initial question
         await this.fetchCurrentQuestion()
@@ -80,15 +99,25 @@ export const useReadingStore = defineStore('reading', {
     },
 
     async getNextChunk() {
-      if (!this.assessmentId || !this.currentChunk?.has_next) {
-        return
+      if (!this.assessmentId) {
+        return;
       }
-
-      this.isLoading = true
-      this.error = null
-
+    
+      // If we're on the last chunk, trigger completion
+      if (!this.currentChunk?.has_next) {
+        throw {
+          response: {
+            status: 400,
+            data: { detail: "No next chunk available" }
+          }
+        };
+      }
+    
+      this.isLoading = true;
+      this.error = null;
+    
       try {
-        const response = await api.get(`/assessment/next/${this.assessmentId}`)
+        const response = await api.get(`/assessment/next/${this.assessmentId}`);
         this.currentChunk = response.data
         
         // Reset question state for new chunk
@@ -97,6 +126,7 @@ export const useReadingStore = defineStore('reading', {
         // Get new question for this chunk
         await this.fetchCurrentQuestion()
       } catch (error: any) {
+        
         this.error = error.response?.data?.detail || 'Failed to get next chunk'
         throw error
       } finally {
@@ -153,22 +183,73 @@ export const useReadingStore = defineStore('reading', {
       }
     },
 
-  async handleNavigation() {
-    if (!this.canProgress) return
+    async completeAssessment(): Promise<CompletionResponse> {
+      if (!this.assessmentId) {
+        throw new Error('No active assessment');
+      }
 
-    this.navigationLoading = true
-    this.error = null
-    
-    try {
-      await this.getNextChunk()
-      return true
-    } catch (error: any) {
-      this.error = error.response?.data?.detail || 'Failed to navigate'
-      throw error
-    } finally {
-      this.navigationLoading = false
-    }
-  },
+      this.navigationLoading = true;
+      this.error = null;
+
+      try {
+        const response = await api.post<CompletionResponse>(
+          `/assessment/${this.assessmentId}/complete`
+        );
+        
+        this.isActive = false;
+        return response.data;
+      } catch (error: any) {
+        this.error = error.response?.data?.detail || 'Failed to complete assessment';
+        throw error;
+      } finally {
+        this.navigationLoading = false;
+      }
+    },
+
+    async handleNavigation(): Promise<NavigationResult> {
+      if (!this.canProgress) return { completed: false };
+
+      this.navigationLoading = true;
+      this.error = null;
+      
+      try {
+        try {
+          await this.getNextChunk();
+          return { completed: false };
+        } catch (error: any) {
+          // Check if we're at the last chunk
+          if (error.response?.status === 400 && 
+              error.response?.data?.detail === "No next chunk available") {
+            
+            try {
+              // Complete the assessment and get completion info
+              const completion = await this.completeAssessment();
+              
+              // Update store state
+              this.isActive = false;
+              
+              // Return completion status with full completion info
+              return {
+                completed: true,
+                message: completion.message,
+                completion
+              };
+            } catch (completionError: any) {
+              // Handle completion errors specifically
+              throw completionError;
+            }
+          } else {
+            // If it's any other error, throw it
+            throw error;
+          }
+        }
+      } catch (error: any) {
+        this.error = error.response?.data?.detail || 'Failed to navigate';
+        throw error;
+      } finally {
+        this.navigationLoading = false;
+      }
+    },
 
     resetQuestionState() {
       this.currentQuestion = null
@@ -187,6 +268,7 @@ export const useReadingStore = defineStore('reading', {
       this.canProgress = false
       this.isSubmitting = false
       this.navigationLoading = false  
+      this.isActive = false
 
     }
   }

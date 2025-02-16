@@ -22,27 +22,27 @@
       </p>
 
       <!-- Answer Form -->
-<form @submit.prevent="handleSubmit" class="space-y-4">
-  <BaseTextarea
-    v-model="answerInput"
-    name="answer"
-    label="Your Answer"
-    placeholder="Type your answer here. Be sure to explain your reasoning and use evidence from the text."
-    :disabled="isSubmitting"
-    :error="error"
-    required
-  />
+      <form @submit.prevent="handleSubmit" class="space-y-4">
+        <BaseTextarea
+          v-model="answerInput"
+          name="answer"
+          label="Your Answer"
+          placeholder="Type your answer here. Be sure to explain your reasoning and use evidence from the text."
+          :disabled="isSubmitting"
+          :error="errorMessage"
+          required
+        />
 
-  <BaseButton
-    type="submit"
-    variant="primary"
-    :loading="isSubmitting"
-    :disabled="!answerInput.trim() || isSubmitting"
-    class="w-full"
-  >
-    Submit Answer
-  </BaseButton>
-</form>
+        <BaseButton
+          type="submit"
+          variant="primary"
+          :loading="isSubmitting"
+          :disabled="!answerInput.trim() || isSubmitting"
+          class="w-full"
+        >
+          Submit Answer
+        </BaseButton>
+      </form>
 
       <!-- Feedback Display -->
       <TransitionGroup
@@ -93,14 +93,14 @@
           class="mt-4 w-full flex items-center justify-center bg-blue-50 hover:bg-blue-100 
                 text-blue-700 p-4 rounded-md border border-blue-200 transition-colors"
           :disabled="navigationLoading"
-          @click="handleNext"
+          @click="handleProgressClick"
         >
           <div v-if="navigationLoading" class="mr-2">
             <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
           <ArrowRight v-else class="h-5 w-5 mr-2" />
           <span class="text-sm font-medium">
-            {{ navigationLoading ? 'Loading next section...' : 'Click here or press Next to continue' }}
+            {{ currentChunk?.has_next ? 'Continue to next section' : 'Complete reading assessment' }}
           </span>
         </button>
       </TransitionGroup>
@@ -114,10 +114,10 @@
 
     <!-- Error State -->
     <BaseAlert
-      v-if="error"
+      v-if="showError"
       v-model="showError"
       variant="error"
-      :message="error"
+      :message="alertMessage"
       dismissible
     />
   </div>
@@ -132,9 +132,12 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 
+const emit = defineEmits<{
+  (e: 'complete'): void
+}>()
 
 const readingStore = useReadingStore()
-const { currentQuestion, isLoading, error, feedback, canProgress, isSubmitting, navigationLoading } = storeToRefs(readingStore)
+const { currentQuestion, isLoading, error, feedback, canProgress, isSubmitting, navigationLoading, currentChunk } = storeToRefs(readingStore)
 
 // Local state
 const answerInput = ref('')
@@ -142,6 +145,12 @@ const showError = ref(false)
 
 // Computed properties
 const isCorrect = computed(() => canProgress.value || (feedback.value && readingStore.hasFeedback))
+
+// Convert null error to undefined for BaseTextarea
+const errorMessage = computed(() => error.value || undefined)
+
+// Convert null error to undefined for BaseAlert
+const alertMessage = computed(() => error.value || undefined)
 
 // Question category styling
 const categoryClasses: Record<string, string> = {
@@ -174,11 +183,17 @@ const handleSubmit = async () => {
   }
 }
 
-const handleNext = async () => {
-  try {
-    await readingStore.handleNavigation()
-  } catch (err) {
-    showError.value = true
+const handleProgressClick = async () => {
+  if (!currentChunk.value?.has_next) {
+    // If on last chunk, emit complete event for parent to handle
+    emit('complete')
+  } else {
+    // Regular next section navigation
+    try {
+      await readingStore.handleNavigation()
+    } catch (err) {
+      showError.value = true
+    }
   }
 }
 
