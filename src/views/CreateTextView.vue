@@ -1,4 +1,4 @@
-import { TextForm, PrimaryType, Genre } from '../types/text'<!-- src/views/CreateTextView.vue -->
+<!-- src/views/CreateTextView.vue -->
 <template>
   <div class="p-6">
     <!-- Form Card -->
@@ -10,14 +10,6 @@ import { TextForm, PrimaryType, Genre } from '../types/text'<!-- src/views/Creat
           v-model="showError"
           variant="error"
           :message="error"
-          dismissible
-        />
-
-        <BaseAlert
-          v-if="showSuccess"
-          v-model="showSuccess"
-          variant="success"
-          message="Text created successfully!"
           dismissible
         />
 
@@ -53,14 +45,26 @@ import { TextForm, PrimaryType, Genre } from '../types/text'<!-- src/views/Creat
             >
               Cancel
             </BaseButton>
-            <BaseButton
-              type="submit"
-              variant="primary"
-              :loading="isSubmitting"
-              :disabled="!isFormValid || isSubmitting"
-            >
-              Create Text
-            </BaseButton>
+            
+            <div class="relative">
+              <BaseButton
+                type="submit"
+                variant="primary"
+                :loading="isSubmitting"
+                :disabled="!isFormValid || isSubmitting"
+              >
+                {{ isSubmitting ? 'Creating Text...' : 'Create Text' }}
+              </BaseButton>
+              
+              <!-- Success overlay with countdown -->
+              <div 
+                v-if="showSuccess"
+                class="absolute bottom-full mb-2 left-0 right-0 text-center bg-green-100 
+                       text-green-800 px-4 py-2 rounded-md shadow-sm"
+              >
+                Text created! Redirecting in {{ redirectCountdown }}s...
+              </div>
+            </div>
           </div>
         </form>
       </div>
@@ -69,7 +73,7 @@ import { TextForm, PrimaryType, Genre } from '../types/text'<!-- src/views/Creat
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -78,20 +82,19 @@ import TextContentEditor from '@/components/teacher/TextContentEditor.vue'
 import { useTextStore } from '@/stores/text'
 import { TextForm, PrimaryType, Genre } from '../types/text'
 
-
 const router = useRouter()
 const textStore = useTextStore()
 
 // Form state
 interface FormMetadata {
-  gradeLevel: number;  // Required number
+  gradeLevel: number;
   form: string;
   primaryType: string;
   genres: string[];
 }
 
 const metadata = ref<FormMetadata>({
-  gradeLevel: 2,  // Default to minimum grade level
+  gradeLevel: 2,
   form: '',
   primaryType: '',
   genres: []
@@ -108,6 +111,8 @@ const isSubmitting = ref(false)
 const error = ref('')
 const showError = ref(false)
 const showSuccess = ref(false)
+const redirectCountdown = ref(3)
+const redirectTimer = ref<number | null>(null)
 
 // Computed
 const isFormValid = computed(() => 
@@ -141,7 +146,6 @@ const handleSubmit = async () => {
   showError.value = false
 
   try {
-    // Format the content with XML tags
     const formattedContent = `<title>${contentData.value.title}</title>\n${contentData.value.content}`
 
     await textStore.createText({
@@ -156,19 +160,34 @@ const handleSubmit = async () => {
 
     showSuccess.value = true
     
-    // Wait for success message to be seen
-    setTimeout(() => {
-      router.push({ name: 'teacher-texts' })
-    }, 1500)
+    // Start countdown timer
+    redirectTimer.value = setInterval(() => {
+      redirectCountdown.value--
+      if (redirectCountdown.value <= 0) {
+        clearInterval(redirectTimer.value as number)
+        router.push({ 
+          name: 'teacher-texts-list',
+          query: { 
+            success: 'true',
+            message: 'Text created successfully'
+          }
+        })
+      }
+    }, 1000)
 
   } catch (e: any) {
     error.value = e?.response?.data?.detail || 'Failed to create text'
     showError.value = true
-    
-    // Scroll to top to show error
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } finally {
     isSubmitting.value = false
   }
 }
+
+// Cleanup
+onBeforeUnmount(() => {
+  if (redirectTimer.value) {
+    clearInterval(redirectTimer.value)
+  }
+})
 </script>
