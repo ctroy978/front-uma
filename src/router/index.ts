@@ -129,6 +129,15 @@ const routes: RouteRecordRaw[] = [
       component: () => import('@/views/student/DashboardView.vue')
     },
     {
+      path: 'completions',
+      name: 'student-completions',
+      component: () => import('@/views/student/CompletionTestsView.vue'),
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']
+      }
+    },
+    {
       path: 'teacher/:id',
       name: 'student-teacher-texts',
       component: () => import('@/views/student/TeacherTextsView.vue'),
@@ -154,31 +163,13 @@ const routes: RouteRecordRaw[] = [
   meta: { public: true }
 },
 
-
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
     meta: { public: true }
-  },
-  {
-  path: '/student',
-  component: () => import('@/components/student/StudentLayout.vue'),
-  children: [
-    {
-      path: '',
-      name: 'student-dashboard',
-      component: () => import('@/views/student/DashboardView.vue')
-    },
-    {
-      path: 'teacher/:id',
-      name: 'student-teacher-texts',
-      component: () => import('@/views/student/TeacherTextsView.vue'),
-      props: true
-    }
+  }
   ]
-}
-]
 
 const router = createRouter({
   history: createWebHistory(),
