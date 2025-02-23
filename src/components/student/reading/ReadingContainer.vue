@@ -54,6 +54,14 @@
             </div>
           </div>
 
+
+                <!-- Audio Player - Place directly under the text content -->
+            <TextAudioPlayer
+              v-if="currentChunk && !isLoading"
+              :chunk-content="currentChunk.content"
+              class="mt-4"
+            />
+
           <!-- Navigation Buttons -->
           <div v-if="currentChunk && !isLoading" class="mt-6">
             <div class="flex justify-between items-center">
@@ -118,6 +126,8 @@ import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import QuestionPanel from './QuestionPanel.vue'
+import TextAudioPlayer from '@/components/student/reading/TextAudioPlayer.vue'
+
 
 const route = useRoute()
 const router = useRouter()
