@@ -168,7 +168,19 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
     meta: { public: true }
-  }
+  },
+
+  {
+    path: '/completion-test/:id',
+    name: 'completion-test',
+    component: () => import('@/views/student/CompletionTestView.vue'),
+    props: true,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['STUDENT', 'TEACHER', 'ADMIN']
+    }
+  },
+  
   ]
 
 const router = createRouter({
@@ -240,5 +252,7 @@ router.afterEach(() => {
   // Scroll to top
   window.scrollTo(0, 0)
 })
+
+
 
 export default router
