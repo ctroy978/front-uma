@@ -154,6 +154,15 @@
             </div>
             <div class="mt-4">
               <button
+                v-if="text.isCompleted"
+                type="button"
+                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 cursor-default"
+              >
+                <CheckCircle class="h-4 w-4 mr-1" />
+                Completed
+              </button>
+              <button
+                v-else
                 type="button"
                 @click="startReading(text)"
                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -183,10 +192,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, BookOpen, ArrowUpDown, ArrowDownUp, X } from 'lucide-vue-next'
+import { User, BookOpen, ArrowUpDown, ArrowDownUp, X, CheckCircle } from 'lucide-vue-next'
 import { useStudentStore } from '@/stores/student'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import api from '@/utils/axios'
+
+interface AssessmentStatus {
+  has_active_assessment: boolean;
+  assessment_id: string | null;
+  is_completed: boolean;
+  completion_id: string | null;
+  completion_status: string | null;
+}
 
 interface Text {
   id: string
@@ -196,10 +213,7 @@ interface Text {
   created_at: string
   hasActiveAssessment?: boolean
   assessmentId?: string | null
-}
-
-interface TeacherTextsResponse {
-  texts: Text[]
+  isCompleted?: boolean
 }
 
 const props = defineProps<{
@@ -276,12 +290,18 @@ const filteredTexts = computed(() => {
 })
 
 // Methods
-const fetchAssessmentStatus = async (textId: string): Promise<{ has_active_assessment: boolean; assessment_id: string | null }> => {
+const fetchAssessmentStatus = async (textId: string): Promise<AssessmentStatus> => {
   try {
     const response = await api.get(`/assessment/status/${textId}`)
     return response.data
   } catch (error) {
-    return { has_active_assessment: false, assessment_id: null }
+    return { 
+      has_active_assessment: false, 
+      assessment_id: null,
+      is_completed: false,
+      completion_id: null,
+      completion_status: null
+    }
   }
 }
 
@@ -305,7 +325,8 @@ const fetchTexts = async () => {
         return {
           ...text,
           hasActiveAssessment: status.has_active_assessment,
-          assessmentId: status.assessment_id
+          assessmentId: status.assessment_id,
+          isCompleted: status.is_completed
         }
       })
     )
@@ -325,23 +346,21 @@ const toggleSortDirection = () => {
 
 const startReading = async (text: Text) => {
   try {
+    // Prevent starting completed assessments
+    if (text.isCompleted) {
+      return
+    }
+    
     isLoading.value = true
     showError.value = false
     error.value = ''
 
-    if (text.hasActiveAssessment && text.assessmentId) {
-      // If there's an active assessment, navigate directly to it
-      await router.push({
-        name: 'student-reading',
-        params: { assessmentId: text.assessmentId }
-      })
-    } else {
-      // Start a new assessment
-      await router.push({ 
-        name: 'student-reading',
-        params: { textId: text.id }
-      })
-    }
+    // Use the reading store to start reading
+    // This method will properly handle existing active assessments
+    await router.push({ 
+      name: 'student-reading',
+      params: { textId: text.id }
+    })
   } catch (err: any) {
     showError.value = true
     error.value = 'Unable to start reading. Please try again.'
