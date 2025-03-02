@@ -70,7 +70,7 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
-  // New Teacher Routes
+  // Teacher Routes
 
 {
   path: '/teacher',
@@ -106,7 +106,45 @@ const routes: RouteRecordRaw[] = [
       name: 'edit-text',
       component: () => import('@/views/EditTextView.vue'),
       props: true
-    }
+    },
+    {
+      path: 'analysis',
+      name: 'teacher-analysis',
+      component: () => import('@/views/teacher/AnalysisView.vue')
+    },
+    {
+      path: 'analysis/student/:studentId/report/:reportId',
+      name: 'single-report',
+      component: () => import('@/views/teacher/SingleReportView.vue'),
+      props: true
+    },
+    {
+      path: 'analysis',
+      name: 'teacher-analysis',
+      component: () => import('@/views/teacher/AnalysisView.vue')
+    },
+    {
+      path: 'analysis/student/:studentId/report/:reportId',
+      name: 'single-report',
+      component: () => import('@/views/teacher/SingleReportView.vue'),
+      props: true
+    },
+    {
+      path: 'analysis/student/:studentId/cumulative-report/:reportId',
+      name: 'cumulative-report',
+      component: () => import('@/views/teacher/CumulativeReportView.vue'),
+      props: true
+    },
+    {
+      path: '/teacher/reports/student/:studentId/cumulative',
+      name: 'cumulative-report',
+      component: () => import('@/views/teacher/CumulativeReportView.vue'),
+      props: true,
+      meta: {
+        requiresAuth: true,
+        allowedRoles: ['TEACHER', 'ADMIN']
+      }
+    },
   ]
 },
 
