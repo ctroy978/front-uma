@@ -56,11 +56,12 @@
 
 
                 <!-- Audio Player - Place directly under the text content -->
-            <TextAudioPlayer
-              v-if="currentChunk && !isLoading"
-              :chunk-content="currentChunk.content"
-              class="mt-4"
-            />
+                <TextAudioPlayer
+                  v-if="currentChunk && !isLoading"
+                  :chunk-content="currentChunk.content"
+                  :chunk-id="currentChunk.id"
+                  class="mt-4"
+                />
 
           <!-- Navigation Buttons -->
           <div v-if="currentChunk && !isLoading" class="mt-6">

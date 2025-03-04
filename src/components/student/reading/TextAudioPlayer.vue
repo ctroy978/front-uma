@@ -1,4 +1,3 @@
-// TextAudioPlayer.vue
 <template>
   <div class="bg-white shadow rounded-lg p-4 mt-6">
     <!-- Title and Description -->
@@ -35,7 +34,7 @@
       <!-- Loading Spinner -->
       <div v-if="isLoading" class="flex items-center text-sm text-gray-500">
         <div class="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600 mr-2"></div>
-        Generating audio...
+        Loading audio...
       </div>
     </div>
 
@@ -68,7 +67,7 @@ import { ref, watch, onBeforeUnmount } from 'vue'
 import { Play, Pause, Square } from 'lucide-vue-next'
 
 const props = defineProps<{
-  chunkContent: string
+  chunkId: string // The unique database ID of the text chunk
 }>()
 
 // State
@@ -78,17 +77,6 @@ const isPlaying = ref(false)
 const error = ref<string | undefined>(undefined)
 const audioPlayer = ref<HTMLAudioElement | null>(null)
 let currentRequest: AbortController | null = null
-
-// Generate consistent ID based on chunk content
-const generateChunkId = (text: string) => {
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return `chunk_${Math.abs(hash)}`;
-}
 
 // Clean up function for audio resources
 const cleanup = () => {
@@ -110,9 +98,9 @@ const cleanup = () => {
   isPlaying.value = false
 }
 
-// Generate audio from text
-const generateAudio = async () => {
-  if (!props.chunkContent) return
+// Stream audio by chunk ID
+const streamAudio = async () => {
+  if (!props.chunkId) return
   
   // Clean up any existing request
   cleanup()
@@ -122,16 +110,16 @@ const generateAudio = async () => {
   
   // Create new abort controller for this request
   currentRequest = new AbortController()
+
+
   
   try {
-    const chunkId = generateChunkId(props.chunkContent)
-    const response = await fetch('https://umaread.org/tts/generate_tts/', {
-      method: 'POST',
+    const response = await fetch(`https://umaread.org/tts/stream_audio/${encodeURIComponent(props.chunkId)}`, {
+
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-API-Key': import.meta.env.VITE_AUD_KEY
+        'x-api-key': import.meta.env.VITE_AUD_KEY
       },
-      body: `text=${encodeURIComponent(props.chunkContent)}&id=${encodeURIComponent(chunkId)}`,
       signal: currentRequest.signal
     })
 
@@ -148,8 +136,8 @@ const generateAudio = async () => {
       // Ignore abort errors
       return
     }
-    console.error('Audio generation error:', err)
-    error.value = 'Error generating audio. Please try again.'
+    console.error('Audio streaming error:', err)
+    error.value = 'Error streaming audio. Please try again.'
   } finally {
     isLoading.value = false
     currentRequest = null
@@ -177,7 +165,7 @@ const handlePlayPause = () => {
     }
   } else {
     isPlaying.value = true // Set this first so audio plays when ready
-    generateAudio()
+    streamAudio()
   }
 }
 
@@ -200,11 +188,11 @@ const handleAudioError = (e: Event) => {
 
 const retryAudio = () => {
   error.value = undefined
-  generateAudio()
+  streamAudio()
 }
 
-// Watch for chunk content changes
-watch(() => props.chunkContent, () => {
+// Watch for chunk ID changes
+watch(() => props.chunkId, () => {
   cleanup()
 }, { immediate: true })
 
