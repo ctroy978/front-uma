@@ -54,14 +54,19 @@
             </div>
           </div>
 
+          <!-- Reading Tools -->
+          <div v-if="currentChunk && !isLoading" class="grid grid-cols-2 gap-4 mt-4">
+            <!-- Audio Player -->
+            <TextAudioPlayer
+              :chunk-content="currentChunk.content"
+              :chunk-id="currentChunk.id"
+            />
 
-                <!-- Audio Player - Place directly under the text content -->
-                <TextAudioPlayer
-                  v-if="currentChunk && !isLoading"
-                  :chunk-content="currentChunk.content"
-                  :chunk-id="currentChunk.id"
-                  class="mt-4"
-                />
+            <!-- Text Simplifier -->
+            <TextSimplifier
+              :chunk-content="currentChunk.content"
+            />
+          </div>
 
           <!-- Navigation Buttons -->
           <div v-if="currentChunk && !isLoading" class="mt-6">
@@ -95,13 +100,13 @@
           </div>
         </div>
 
- <!-- Question Section -->
- <div class="w-2/5">
-    <QuestionPanel 
-      v-if="currentChunk && !isLoading" 
-      @complete="handleComplete"
-    />
-  </div>
+        <!-- Question Section -->
+        <div class="w-2/5">
+          <QuestionPanel 
+            v-if="currentChunk && !isLoading" 
+            @complete="handleComplete"
+          />
+        </div>
       </div>
     </div>
 
@@ -128,6 +133,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import QuestionPanel from './QuestionPanel.vue'
 import TextAudioPlayer from '@/components/student/reading/TextAudioPlayer.vue'
+import TextSimplifier from '@/components/student/reading/TextSimplifier.vue'
 
 
 const route = useRoute()
@@ -221,8 +227,6 @@ const beforeUnload = (e: BeforeUnloadEvent) => {
     e.returnValue = ''
   }
 }
-
-
 
 onMounted(() => {
   window.addEventListener('beforeunload', beforeUnload)

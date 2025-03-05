@@ -23,6 +23,13 @@ interface EvaluationResponse {
   can_progress: boolean
 }
 
+interface SimplifiedTextResponse {
+  simplified_text: string
+  original_grade_level: number
+  target_grade_level: number
+  is_cached: boolean
+}
+
 interface ReadingState {
   assessmentId: string | null
   textTitle: string | null
@@ -35,6 +42,13 @@ interface ReadingState {
   isSubmitting: boolean
   navigationLoading: boolean
   isActive: boolean
+  // Simplified text state
+  simplifiedText: string | null
+  simplifyLoading: boolean
+  simplifyError: string | null
+  originalGradeLevel: number | null
+  targetGradeLevel: number | null
+  isTextCached: boolean
 }
 
 interface CompletionResponse {
@@ -64,14 +78,22 @@ export const useReadingStore = defineStore('reading', {
     canProgress: false,
     isSubmitting: false,
     navigationLoading: false,
-    isActive: false
+    isActive: false,
+    // Simplified text state
+    simplifiedText: null,
+    simplifyLoading: false,
+    simplifyError: null,
+    originalGradeLevel: null,
+    targetGradeLevel: null,
+    isTextCached: false
   }),
 
   getters: {
     hasActiveAssessment: (state): boolean => !!state.assessmentId,
     hasFeedback: (state): boolean => !!state.feedback,
-    isAssessmentActive: (state): boolean => state.isActive
-
+    isAssessmentActive: (state): boolean => state.isActive,
+    // New getters
+    hasSimplifiedText: (state): boolean => !!state.simplifiedText
   },
 
   actions: {
@@ -122,6 +144,9 @@ export const useReadingStore = defineStore('reading', {
         
         // Reset question state for new chunk
         this.resetQuestionState()
+        
+        // Clear simplified text when moving to a new chunk
+        this.clearSimplifiedText()
         
         // Get new question for this chunk
         await this.fetchCurrentQuestion()
@@ -251,6 +276,50 @@ export const useReadingStore = defineStore('reading', {
       }
     },
 
+    // New methods for simplified text with caching
+    async simplifyCurrentChunk() {
+      if (!this.assessmentId || !this.currentChunk) {
+        this.simplifyError = 'No text available to simplify'
+        return
+      }
+
+      this.simplifyLoading = true
+      this.simplifyError = null
+      this.simplifiedText = null
+      this.isTextCached = false
+
+      try {
+        console.log('Calling API at:', `/simplify/chunk/${this.assessmentId}`);
+        const response = await api.get<SimplifiedTextResponse>(
+          `/simplify/chunk/${this.assessmentId}`
+        )
+        
+        console.log('API response received:', response.data);
+        
+        // Set the simplified text data
+        this.simplifiedText = response.data.simplified_text
+        this.originalGradeLevel = response.data.original_grade_level
+        this.targetGradeLevel = response.data.target_grade_level
+        this.isTextCached = response.data.is_cached
+        
+        return response.data
+      } catch (error: any) {
+        console.error('Error in simplifyCurrentChunk:', error);
+        this.simplifyError = error.response?.data?.detail || 'Failed to simplify text'
+        throw error
+      } finally {
+        this.simplifyLoading = false
+      }
+    },
+
+    clearSimplifiedText() {
+      this.simplifiedText = null
+      this.simplifyError = null
+      this.originalGradeLevel = null
+      this.targetGradeLevel = null
+      this.isTextCached = false
+    },
+
     resetQuestionState() {
       this.currentQuestion = null
       this.feedback = null
@@ -269,7 +338,8 @@ export const useReadingStore = defineStore('reading', {
       this.isSubmitting = false
       this.navigationLoading = false  
       this.isActive = false
-
+      // Clear simplified text state
+      this.clearSimplifiedText()
     }
   }
 })
