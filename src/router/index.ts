@@ -70,6 +70,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+  {
+    path: '/admin/whitelist',
+    name: 'admin-whitelist',
+    component: () => import('@/views/admin/WhitelistView.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ADMIN']
+    }
+  },
+
   // Teacher Routes
 
 {

@@ -42,6 +42,16 @@
             >
               Admin Portal
             </router-link>
+
+            <!-- New Whitelist Admin Link -->
+            <router-link
+              v-if="canAccessAdmin"
+              :to="{ name: 'admin-whitelist' }"
+              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              active-class="bg-gray-100"
+            >
+              Email Whitelist
+            </router-link>
           </div>
         </div>
 
@@ -148,6 +158,17 @@
             @click="isMobileMenuOpen = false"
           >
             Admin Portal
+          </router-link>
+
+          <!-- New Mobile Whitelist Admin Link -->
+          <router-link
+            v-if="canAccessAdmin"
+            :to="{ name: 'admin-whitelist' }"
+            class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            active-class="bg-gray-100"
+            @click="isMobileMenuOpen = false"
+          >
+            Email Whitelist
           </router-link>
 
           <button
