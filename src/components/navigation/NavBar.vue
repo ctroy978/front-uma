@@ -209,8 +209,8 @@ const canAccessAdmin = computed(() =>
 
 // User role display
 const userRole = computed(() => {
-  if (!authStore.user?.role_name) return ''
-  return authStore.user.role_name.charAt(0) + authStore.user.role_name.slice(1).toLowerCase()
+  if (!authStore.currentUser?.role) return ''
+  return authStore.currentUser.role.charAt(0) + authStore.currentUser.role.slice(1).toLowerCase()
 })
 
 const handleLogout = async () => {
