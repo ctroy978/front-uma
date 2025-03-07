@@ -103,7 +103,7 @@
   
     emits: ['update:modelValue', 'confirm', 'cancel'],
   
-    setup(props, { emit }) {
+    setup(_, { emit }) {
       const onConfirm = () => {
         emit('confirm')
       }

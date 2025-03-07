@@ -114,9 +114,8 @@
   
   // Methods
   const handleConfirm = () => {
-    emit('confirm', hasActiveAssessments.value)
-  }
-  
+  emit('confirm', hasActiveAssessments.value === true)
+}
   const handleCancel = () => {
     emit('close')
   }

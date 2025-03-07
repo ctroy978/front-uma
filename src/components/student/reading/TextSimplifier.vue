@@ -72,7 +72,7 @@
   </template>
   
   <script setup lang="ts">
-  import { ref, computed, watch } from 'vue'
+  import { ref, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { BookOpen, Zap } from 'lucide-vue-next'
   import { useReadingStore } from '@/stores/reading'
