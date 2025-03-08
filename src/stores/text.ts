@@ -5,20 +5,10 @@ import type {
     Text, 
     TextState, 
     CreateTextPayload,
-    TextForm,
-    PrimaryType,
-    Genre 
+   
 } from '@/types/text'
 
-interface TextUpdateData {
-    metadata: {
-        grade_level: number;
-        form: TextForm;
-        primary_type: PrimaryType;
-        genres: Set<Genre>;
-    };
-    content: string;
-}
+
 
 
 export interface ActiveAssessmentInfo {

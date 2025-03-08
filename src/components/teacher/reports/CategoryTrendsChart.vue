@@ -1,242 +1,200 @@
-<!-- src/components/teacher/reports/CategoryTrendsChart.vue -->
+<!-- src/components/teacher/reports/CategoryTrendsChartPlaceholder.vue -->
 <template>
-  <div ref="chartContainer" class="w-full h-full"></div>
+  <div class="placeholder-chart">
+    <div class="content">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"></path>
+          <path d="M18.4 9.4l-4.2 4.2-2-2L8 16"></path>
+        </svg>
+      </div>
+      <h3 class="title">Category Trends Chart Coming Soon</h3>
+      <p class="message">We're currently refining the trends visualization. It will be available in the next update.</p>
+      <div v-if="showDetails" class="details">
+        <div class="data-summary">
+          <h4>Trends Data Summary:</h4>
+          <div v-if="chartData && chartData.length" class="categories">
+            <div v-for="(category, index) in chartData" :key="index" class="category">
+              <div class="category-header">
+                <span class="category-name">{{ category.category }}</span>
+                <span class="data-points">{{ category.scores.length }} tests</span>
+              </div>
+              <div class="trend-summary">
+                <div class="trend-metric">
+                  <strong>First:</strong> {{ category.scores[0]?.toFixed(1) || 'N/A' }}%
+                </div>
+                <div class="trend-metric">
+                  <strong>Latest:</strong> {{ category.scores[category.scores.length - 1]?.toFixed(1) || 'N/A' }}%
+                </div>
+                <div class="trend-metric">
+                  <strong>Average:</strong> {{ calculateAverage(category.scores).toFixed(1) }}%
+                </div>
+                <div class="trend-metric">
+                  <strong>Change:</strong> 
+                  <span :class="getTrendClass(category.scores)">
+                    {{ calculateChange(category.scores) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-data">
+            No trends data available
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted } from 'vue';
-import * as d3 from 'd3';
+import { defineProps, computed } from 'vue';
 
 const props = defineProps<{
-  chartData: {
+  chartData?: {
     category: string;
     dates: string[];
     scores: number[];
   }[];
+  showDetails?: boolean;
 }>();
 
-const chartContainer = ref<HTMLElement | null>(null);
+// Default props
+const showDetails = computed(() => props.showDetails ?? true);
 
-interface Chart {
-  svg: d3.Selection<SVGGElement, unknown, null, undefined>;
-  tooltip: d3.Selection<HTMLDivElement, unknown, null, undefined>;
+// Calculate average of scores
+const calculateAverage = (scores: number[]): number => {
+  if (!scores || scores.length === 0) return 0;
+  return scores.reduce((sum, score) => sum + score, 0) / scores.length;
+};
+
+// Calculate change between first and last score
+const calculateChange = (scores: number[]): string => {
+  if (!scores || scores.length < 2) return 'N/A';
+  
+  const first = scores[0];
+  const last = scores[scores.length - 1];
+  const change = last - first;
+  const sign = change > 0 ? '+' : '';
+  
+  return `${sign}${change.toFixed(1)}%`;
+};
+
+// Get CSS class based on trend direction
+const getTrendClass = (scores: number[]): string => {
+  if (!scores || scores.length < 2) return '';
+  
+  const first = scores[0];
+  const last = scores[scores.length - 1];
+  const change = last - first;
+  
+  if (change > 0) return 'trend-positive';
+  if (change < 0) return 'trend-negative';
+  return '';
+};
+</script>
+
+<style scoped>
+.placeholder-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 20px;
 }
 
-// Function to create or update the chart
-const renderChart = () => {
-  if (!chartContainer.value || !props.chartData || props.chartData.length === 0) return;
+.content {
+  max-width: 500px;
+  text-align: center;
+}
 
-  // Clear previous chart if it exists
-  d3.select(chartContainer.value).select('svg').remove();
-  d3.select(chartContainer.value).select(".tooltip").remove();
+.icon {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
 
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
 
-  // Set dimensions and margins
-  const margin = { top: 20, right: 120, bottom: 50, left: 50 };
-  const width = chartContainer.value.clientWidth - margin.left - margin.right;
-  const height = chartContainer.value.clientHeight - margin.top - margin.bottom;
+.message {
+  color: #6b7280;
+  margin-bottom: 20px;
+}
 
-  // Create SVG
-  const svg: d3.Selection<SVGGElement, unknown, null, undefined> = d3.select(chartContainer.value)
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
+.details {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: left;
+}
 
-  // Determine the maximum number of data points across all categories
-  const maxDataPoints = Math.max(...props.chartData.map(d => d.scores.length));
-  
-  // Create a common x-axis domain
-  const xDomain = Array.from({ length: maxDataPoints }, (_, i) => i);
-  
-  // X scale - using index positions to ensure alignment
-  const x = d3.scaleLinear()
-    .domain([0, maxDataPoints - 1])
-    .range([0, width]);
+.data-summary h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #4b5563;
+}
 
-  // Y scale
-  const y = d3.scaleLinear()
-    .domain([0, 100]) // Scores are percentages
-    .range([height, 0]);
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  // Color scale for categories
-  const color = d3.scaleOrdinal()
-    .domain(props.chartData.map(d => d.category))
-    .range(d3.schemeCategory10);
+.category {
+  padding: 12px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
 
-  // Add X axis with date labels if available
-  const formatXAxis = (i: number) => {
-    // Find first category with enough dates
-    for (const category of props.chartData) {
-      if (category.dates && category.dates.length > i) {
-        return category.dates[i];
-      }
-    }
-    return `Test ${i+1}`;
-  };
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
 
-  // Show fewer ticks if there are many data points
-  const tickCount = maxDataPoints <= 8 ? maxDataPoints : Math.min(8, maxDataPoints);
-  const tickValues = Array.from({ length: tickCount }, (_, i) => 
-    Math.floor(i * (maxDataPoints - 1) / (tickCount - 1))
-  );
+.category-name {
+  font-weight: 600;
+}
 
-  svg.append('g')
-    .attr('transform', `translate(0,${height})`)
-    .call(d3.axisBottom(x)
-      .tickValues(tickValues)
-      .tickFormat(i => formatXAxis(Number(i)))
-    )
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .attr("dx", "-.8em")
-    .attr("dy", ".15em")
-    .attr("transform", "rotate(-45)");
+.data-points {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
 
-  // Add Y axis
-  svg.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d}%`));
+.trend-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
 
-  // Create line generator
-  const line = d3.line<number>()
-    .x((_, i) => x(i))
-    .y(d => y(d))
-    .curve(d3.curveMonotoneX);
+.trend-metric {
+  font-size: 0.9rem;
+}
 
-  // Add the lines
-  props.chartData.forEach(category => {
-    svg.append('path')
-      .datum(category.scores)
-      .attr('fill', 'none')
-      .attr('stroke', color(category.category) as string)
-      .attr('stroke-width', 2)
-      .attr('d', line);
-  });
+.trend-positive {
+  color: #10b981;
+}
 
-  // Add dots
-  props.chartData.forEach(category => {
-    const dots = category.scores.map((score, i) => ({
-      category: category.category,
-      score: score,
-      date: i < category.dates.length ? category.dates[i] : `Test ${i+1}`,
-      index: i
-    }));
-    svg.selectAll(`.dots-${category.category.replace(/\s+/g, '-')}`)
-      .data(dots)
-      .enter()
-      .append('circle')
-      .attr('class', `dots-${category.category.replace(/\s+/g, '-')}`)
-      .attr('cx', d => x(d.index))
-      .attr('cy', d => y(d.score))
-      .attr('r', 4)
-      .attr('fill', color(category.category) as string)
-      .attr('data-category', (d) => d.category)
-      .attr('data-date', (d) => d.date)
-      .attr('data-score', (d) => d.score)
-      ;
-  });
+.trend-negative {
+  color: #ef4444;
+}
 
-  // Add X axis label
-  svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('x', width / 2)
-    .attr('y', height + margin.bottom - 5)
-    .text('Test Timeline')
-    .attr('fill', '#666');
-
-  // Add Y axis label
-  svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('transform', 'rotate(-90)')
-    .attr('y', -margin.left + 15)
-    .attr('x', -height / 2)
-    .text('Score (%)')
-    .attr('fill', '#666');
-
-  // Add legend
-  const legend = svg.append('g')
-    .attr('font-family', 'sans-serif')
-    .attr('font-size', 10)
-    .attr('text-anchor', 'start')
-    .selectAll('g')
-    .data(props.chartData)
-    .enter().append('g')
-    .attr('transform', (_, i) => `translate(${width + 10},${i * 20})`);
-
-  legend.append('rect')
-    .attr('x', 0)
-    .attr('width', 19)
-    .attr('height', 19)
-    .attr('fill', d => color(d.category) as string);
-
-  legend.append('text')
-    .attr('x', 24)
-    .attr('y', 9.5)
-    .attr('dy', '0.32em')
-    .text(d => d.category);
-
-  // Add tooltips
-  const tooltip: d3.Selection<HTMLDivElement, unknown, null, undefined> = d3.select(chartContainer.value)
-    .append('div')
-    .attr("class", "tooltip")
-    .style('position', 'absolute')
-    .style('background-color', 'white')
-    .style('border', '1px solid #ccc')
-    .style('border-radius', '5px')
-    .style('padding', '10px')
-    .style('box-shadow', '0 0 10px rgba(0, 0, 0, 0.1)')
-    .style('pointer-events', 'none')
-    .style('opacity', 0)
-    .style('z-index', 100);
-
-  // Add hover interactions for each category
-  props.chartData.forEach(category => {
-    const categoryClass = `.dots-${category.category.replace(/\s+/g, '-')}`;
-    
-    svg.selectAll(categoryClass)
-      .on('mouseover', (event) => {
-        const target = event.target as HTMLElement;
-        
-        tooltip.transition()
-          .duration(200)
-          .style('opacity', 0.9);
-        
-        tooltip.html(`
-          <strong>${target.dataset.category}</strong><br/>
-          <strong>Date:</strong> ${target.dataset.date}<br/>
-          <strong>Score:</strong> ${target.dataset.score}%
-        `)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 28}px`);
-      })
-      .on('mouseout', () => {
-        tooltip.transition()
-          .duration(500)
-          .style('opacity', 0);
-      });
-  });
-
-  // Store chart reference
-  const chart: Chart = { svg, tooltip };
-};
-
-// Watch for changes in chart data or container size
-watch(() => props.chartData, renderChart, { deep: true });
-
-// Handle window resize
-const handleResize = () => {
-  renderChart();
-};
-
-// Setup and teardown
-onMounted(() => {
-  renderChart();
-  window.addEventListener('resize', handleResize);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  d3.select(chartContainer.value).select(".tooltip").remove();
-});
-</script>
+.no-data {
+  padding: 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+</style>

@@ -15,16 +15,6 @@ export interface ReportAnalysis {
   recommendedActivities: string[];
 }
 
-export interface CumulativeReportAnalysis {
-  progressionAnalysis: string;
-  textPerformanceInsights: string;
-  developmentRecommendations: string[];
-  teachingStrategies: string[];
-  readingLevelAnalysis: string;  // Added to match the structure in SingleReport
-  textSpecificInsights: string;  // Added to match the structure in SingleReport
-  recommendedActivities: string[]; // Added to match the structure in SingleReport
-}
-
 export interface SingleReport {
   id: string;
   studentId: string;
@@ -41,45 +31,14 @@ export interface SingleReport {
   analysis: ReportAnalysis;
 }
 
-export interface ProgressData {
-  date: string;
-  score: number;
-  textType: string;
-}
-
-export interface CategoryTrend {
-  category: string;
-  dates: string[];
-  scores: number[];
-}
-
-export interface CumulativeReport {
-  id: string;
-  studentId: string;
-  studentName: string;
-  gradeLevel: number;
-  startDate: string;
-  endDate: string;
-  testsCount: number;
-  textsCount: number;
-  daysCovered: number;
-  averageScore: number;
-  growth: number;
-  progressionData: ProgressData[];
-  categoryTrends: CategoryTrend[];
-  analysis: CumulativeReportAnalysis;
-}
-
 export interface ReportListItem {
   id: string;
-  type: 'single' | 'cumulative';
+  type: string; // This will be 'single_test' from the API
   studentId: string;
   studentName: string;
   gradeLevel: number;
   textTitle?: string;
   textType?: string;
-  reportCount?: number;
-  dateRange?: number;
   date: string;
   score: number;
 }
@@ -88,7 +47,6 @@ export interface ReportListItem {
 interface ReportsState {
   reports: ReportListItem[];
   currentSingleReport: SingleReport | null;
-  currentCumulativeReport: CumulativeReport | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -97,7 +55,6 @@ export const useReportsStore = defineStore('reports', {
   state: (): ReportsState => ({
     reports: [],
     currentSingleReport: null,
-    currentCumulativeReport: null,
     isLoading: false,
     error: null
   }),
@@ -116,14 +73,7 @@ export const useReportsStore = defineStore('reports', {
       }, []);
       
       return students.sort((a, b) => a.name.localeCompare(b.name));
-    },
-
-    // Count of reports by type
-    singleReportsCount: (state) => 
-      state.reports.filter(report => report.type === 'single').length,
-    
-    cumulativeReportsCount: (state) => 
-      state.reports.filter(report => report.type === 'cumulative').length
+    }
   },
 
   actions: {
@@ -132,24 +82,30 @@ export const useReportsStore = defineStore('reports', {
       this.error = null;
 
       try {
-        // Real API call to fetch all reports
+        // API call to fetch all reports
         const response = await api.get('/teacher/reports');
-        this.reports = response.data.map((item: any) => ({
+        
+        // Filter to only include single test reports
+        const filteredReports = response.data.filter((item: any) => 
+          item.report_type === 'single_test'
+        );
+        
+        // Map the API response to our store's data structure
+        this.reports = filteredReports.map((item: any) => ({
           id: item.id,
-          type: item.report_type === 'single_test' ? 'single' : 'cumulative',
+          type: item.report_type,
           studentId: item.student_id,
           studentName: item.student_name,
           gradeLevel: item.grade_level || 0,
           textTitle: item.text_title,
           textType: item.text_type,
-          reportCount: item.tests_count,
-          dateRange: item.days_covered,
-          date: item.date || item.completed_at || item.created_at,
+          date: item.completed_at || item.created_at,
           score: item.overall_score || 0
         }));
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to fetch reports';
         console.error('Error fetching reports:', error);
+        throw error;
       } finally {
         this.isLoading = false;
       }
@@ -161,7 +117,7 @@ export const useReportsStore = defineStore('reports', {
       this.currentSingleReport = null;
 
       try {
-        // Real API call to fetch single report
+        // Fetch the single report data
         const response = await api.get(`/teacher/reports/student/${studentId}/report/${reportId}`);
         
         // Get graph data for visualization
@@ -201,147 +157,10 @@ export const useReportsStore = defineStore('reports', {
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to fetch report';
         console.error('Error fetching single report:', error);
+        throw error;
       } finally {
         this.isLoading = false;
       }
-    },
-
-    async fetchCumulativeReport(studentId: string, reportId?: string) {
-      this.isLoading = true;
-      this.error = null;
-      this.currentCumulativeReport = null;
-
-      try {
-        // Real API call to fetch cumulative report
-        const reportResponse = await api.get(`/teacher/reports/student/${studentId}/cumulative-report`);
-        
-        // Check if we have an error response (not enough data)
-        if (reportResponse.data.error) {
-          this.error = reportResponse.data.error;
-          return;
-        }
-        
-        // Get the graph data separately
-        const graphDataResponse = await api.get(
-          `/teacher/reports/student/${studentId}/cumulative-report/graph-data`
-        );
-        
-        // Combine the data
-        const reportData = reportResponse.data;
-        const graphData = graphDataResponse.data;
-        
-        // Map the API response to our store's data structure
-        this.currentCumulativeReport = {
-          id: reportId || studentId,
-          studentId,
-          studentName: reportData.student_name,
-          gradeLevel: reportData.grade_level || 0,
-          startDate: reportData.date_range?.start || '',
-          endDate: reportData.date_range?.end || '',
-          testsCount: reportData.total_tests || 0,
-          textsCount: reportData.texts_count || 0,
-          daysCovered: this.calculateDaysCovered(reportData.date_range?.start, reportData.date_range?.end),
-          averageScore: reportData.overall_score || 0,
-          growth: reportData.growth || 0,
-          progressionData: this.formatProgressionData(graphData.progression),
-          categoryTrends: this.formatCategoryTrends(graphData.category_trends),
-          analysis: {
-            progressionAnalysis: reportData.analysis?.progression_analysis || '',
-            textPerformanceInsights: reportData.analysis?.text_performance_insights || '',
-            developmentRecommendations: 
-              Array.isArray(reportData.analysis?.development_recommendations) 
-                ? reportData.analysis.development_recommendations 
-                : reportData.analysis?.development_recommendations?.split('\n').filter(Boolean) || [],
-            teachingStrategies: 
-              Array.isArray(reportData.analysis?.teaching_strategies) 
-                ? reportData.analysis.teaching_strategies 
-                : reportData.analysis?.teaching_strategies?.split('\n').filter(Boolean) || [],
-            readingLevelAnalysis: "",  // Not used in cumulative but needed for type compatibility
-            textSpecificInsights: "",  // Not used in cumulative but needed for type compatibility
-            recommendedActivities: [], // Not used in cumulative but needed for type compatibility
-          }
-        };
-        
-      } catch (error: any) {
-        this.error = error.response?.data?.detail || 'Failed to fetch cumulative report';
-        console.error('Error fetching cumulative report:', error);
-      } finally {
-        this.isLoading = false;
-      }
-    },
-    
-    // Helper methods
-    formatProgressionData(progression: any[] = []): ProgressData[] {
-      if (!progression || !Array.isArray(progression)) return [];
-      
-      return progression.map(item => ({
-        date: this.formatDateString(item.date),
-        score: item.score,
-        textType: item.level || item.text_title || '',
-      }));
-    },
-    
-    formatDateString(dateString: string) {
-      if (!dateString) return '';
-      
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return dateString;
-      
-      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
-    },
-
-    calculateDaysCovered(startDate?: string, endDate?: string) {
-      if (!startDate || !endDate) return 0;
-      
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-      
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    },
-
-    formatCategoryTrends(categoryTrends: any) {
-      const result: CategoryTrend[] = [];
-      
-      if (!categoryTrends) return result;
-      
-      // Convert backend format to frontend format
-      Object.entries(categoryTrends).forEach(([category, data]: [string, any]) => {
-        // Skip empty categories
-        if (!data) return;
-        
-        // Format different API response structures
-        let dates: string[] = [];
-        let scores: number[] = [];
-        
-        if (Array.isArray(data)) {
-          // Handle array format
-          scores = data;
-          dates = Array(data.length).fill('').map((_, i) => `Day ${i+1}`);
-        } else if (typeof data === 'object') {
-          // Handle object format with dates as keys
-          dates = Object.keys(data).map(date => this.formatDateString(date));
-          scores = Object.values(data) as number[];
-        }
-        
-        result.push({
-          category: this.formatCategoryName(category),
-          dates,
-          scores
-        });
-      });
-      
-      return result;
-    },
-
-    formatCategoryName(category: string) {
-      // Convert snake_case to Title Case
-      return category
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
     },
 
     // Filter reports based on criteria
@@ -353,9 +172,10 @@ export const useReportsStore = defineStore('reports', {
         filteredReports = filteredReports.filter(report => report.studentId === studentId);
       }
       
-      // Apply report type filter
-      if (reportType) {
-        filteredReports = filteredReports.filter(report => report.type === reportType);
+      // Apply report type filter (only if needed, currently we only have single reports)
+      if (reportType && reportType !== 'single') {
+        // Currently only supporting 'single' reports, so return empty if anything else requested
+        return [];
       }
       
       // Apply date range filter
@@ -376,17 +196,24 @@ export const useReportsStore = defineStore('reports', {
       });
     },
 
+    // Helper method to format category names for display
+    formatCategoryName(category: string) {
+      // Convert snake_case to Title Case
+      return category
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    },
+
     // Clear current reports
     clearCurrentReports() {
       this.currentSingleReport = null;
-      this.currentCumulativeReport = null;
     },
 
     // Reset state
     resetState() {
       this.reports = [];
       this.currentSingleReport = null;
-      this.currentCumulativeReport = null;
       this.isLoading = false;
       this.error = null;
     }

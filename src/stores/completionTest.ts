@@ -19,11 +19,7 @@ interface TestResults {
   completion_id: string
 }
 
-interface TestDetails {
-  text_title: string
-  text_id: string
-  completion_id: string
-}
+
 
 interface CompletionTestState {
   completionId: string | null

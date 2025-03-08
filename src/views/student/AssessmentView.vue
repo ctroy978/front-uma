@@ -59,10 +59,9 @@
   
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import api from '@/utils/axios'
 
 interface Chunk {
   id: string
@@ -71,7 +70,6 @@ interface Chunk {
   has_next: boolean
 }
 
-const route = useRoute()
 const router = useRouter()
 
 // State
@@ -82,9 +80,15 @@ const currentChunk = ref<Chunk | null>(null)
 
 onMounted(() => {
   // Fix: Use currentRoute instead of getCurrentRoute
-  const initialState = router.currentRoute.value.state
-  if (initialState?.initialChunk) {
-    currentChunk.value = initialState.initialChunk
+  const routeParams = router.currentRoute.value.params
+if (routeParams.initialChunk) {
+  try {
+    // If it's a stringified JSON object
+    currentChunk.value = JSON.parse(routeParams.initialChunk as string)
+  } catch {
+    // Handle case where it's not valid JSON
+    console.error('Invalid initialChunk data')
   }
+}
 })
 </script>

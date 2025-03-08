@@ -2,6 +2,11 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../stores/auth'
 import type { AuthError, AuthErrorType } from '../types/auth'
 
+// Custom interface to include _retry property
+interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
 // Create axios instance with custom config
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
@@ -14,7 +19,7 @@ const api = axios.create({
 let isRefreshing = false
 // Store pending requests to retry after refresh
 let pendingRequests: Array<{
-  config: InternalAxiosRequestConfig
+  config: CustomAxiosRequestConfig
   resolve: (value: any) => void
   reject: (error: any) => void
 }> = []
@@ -35,7 +40,7 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
+  (_error) => {
     return Promise.reject(
       createAuthError('TOKEN_ERROR', 'Failed to attach authentication token')
     )
@@ -47,7 +52,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const authStore = useAuthStore()
-    const originalRequest = error.config as InternalAxiosRequestConfig
+    const originalRequest = error.config as CustomAxiosRequestConfig
     
     // Don't retry refresh token requests to avoid infinite loops
     if (originalRequest.url?.includes('/auth/token/refresh')) {
@@ -58,7 +63,7 @@ api.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized errors
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
       // If we're already refreshing, queue this request
@@ -102,11 +107,14 @@ api.interceptors.response.use(
         return Promise.reject(
           createAuthError('SESSION_ERROR', 'Session expired')
         )
+      } finally {
+        isRefreshing = false
+        pendingRequests = []
       }
-      }
+    }
 
     // Handle 403 Forbidden errors
-    if (error.response?.status === 403) {
+    if (error.response && error.response.status === 403) {
       return Promise.reject(
         createAuthError('VERIFICATION_ERROR', 'Access forbidden')
       )

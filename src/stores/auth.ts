@@ -236,7 +236,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         // Configure axios to not reject on any status code for logout
         const response = await api.post<LogoutResponse>('/auth/logout', {}, {
-          validateStatus: (status) => true // Accept any status code
+          validateStatus: (_status) => true // Accept any status code
         });
         
         // Log non-200 responses but don't throw

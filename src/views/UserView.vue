@@ -19,14 +19,14 @@
       @toggle-status="handleToggleStatus"
     />
 
-    <!-- Role Edit Modal -->
-    <UserRoleModal
-      v-if="showRoleModal"
-      :show="showRoleModal"
-      :user="selectedUser"
-      @close="closeRoleModal"
-      @update="handleRoleUpdate"
-    />
+  <!-- Role Edit Modal -->
+  <UserRoleModal
+    v-if="showRoleModal && selectedUser !== null"
+    :show="showRoleModal"
+    :user="selectedUser"
+    @close="closeRoleModal"
+    @update="handleRoleUpdate"
+  />
   </div>
 </template>
 
@@ -65,7 +65,7 @@ const closeRoleModal = () => {
   selectedUser.value = null
 }
 
-const handleRoleUpdate = async (updatedUser: User) => {
+const handleRoleUpdate = async (_updatedUser: User) => {
   await adminStore.fetchUsers()
   closeRoleModal()
 }

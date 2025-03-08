@@ -1,191 +1,143 @@
-<!-- src/components/teacher/reports/ProgressionChart.vue -->
+<!-- src/components/teacher/reports/PlaceholderChart.vue -->
 <template>
-  <div ref="chartContainer" class="w-full h-full"></div>
+  <div class="placeholder-chart">
+    <div class="content">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
+        </svg>
+      </div>
+      <h3 class="title">Chart Coming Soon</h3>
+      <p class="message">We're currently working on improving this chart visualization. It will be available in the next update.</p>
+      <div v-if="showDetails" class="details">
+        <div class="data-summary">
+          <h4>Data Summary:</h4>
+          <div v-if="chartData && chartData.length" class="categories">
+            <div v-for="(category, index) in chartData" :key="index" class="category">
+              <span class="category-name">{{ category.category }}</span>
+              <span class="category-points">{{ category.scores.length }} data points</span>
+              <span class="category-average">
+                Avg: {{ calculateAverage(category.scores).toFixed(1) }}%
+              </span>
+            </div>
+          </div>
+          <div v-else class="no-data">
+            No data available
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted } from 'vue';
-import * as d3 from 'd3';
+import { defineProps, computed } from 'vue';
 
 const props = defineProps<{
-  chartData: {
-    date: string;
-    score: number;
-    textType: string;
+  chartData?: {
+    category: string;
+    dates: string[];
+    scores: number[];
   }[];
+  showDetails?: boolean;
 }>();
 
-const chartContainer = ref<HTMLElement | null>(null);
-let chart: any = null;
+// Default props
+const showDetails = computed(() => props.showDetails ?? true);
 
-// Function to create or update the chart
-const renderChart = () => {
-  if (!chartContainer.value || !props.chartData || props.chartData.length === 0) return;
-
-  // Clear previous chart if it exists
-  d3.select(chartContainer.value).selectAll('*').remove();
-
-  // Set dimensions and margins
-  const margin = { top: 20, right: 30, bottom: 50, left: 40 };
-  const width = chartContainer.value.clientWidth - margin.left - margin.right;
-  const height = chartContainer.value.clientHeight - margin.top - margin.bottom;
-
-  // Parse dates and prepare data
-  const data = props.chartData.map(d => ({
-    date: new Date(d.date),
-    score: d.score,
-    textType: d.textType
-  })).sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  // Create SVG
-  const svg = d3.select(chartContainer.value)
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${margin.left},${margin.top})`);
-
-  // X scale
-  const x = d3.scaleTime()
-    .domain(d3.extent(data, d => d.date) as [Date, Date])
-    .range([0, width]);
-
-  // Y scale
-  const y = d3.scaleLinear()
-    .domain([0, 100])
-    .range([height, 0]);
-
-  // Color scale for text types
-  const textTypes = Array.from(new Set(data.map(d => d.textType)));
-  const color = d3.scaleOrdinal()
-    .domain(textTypes)
-    .range(d3.schemeCategory10);
-
-  // Add X axis
-  svg.append('g')
-    .attr('transform', `translate(0,${height})`)
-    .call(d3.axisBottom(x).ticks(Math.min(data.length, 5)));
-
-  // Add Y axis
-  svg.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d}%`));
-
-  // Add X axis label
-  svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('x', width / 2)
-    .attr('y', height + margin.bottom - 10)
-    .text('Date')
-    .attr('fill', '#666');
-
-  // Add Y axis label
-  svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('transform', 'rotate(-90)')
-    .attr('y', -margin.left + 10)
-    .attr('x', -height / 2)
-    .text('Score (%)')
-    .attr('fill', '#666');
-
-  // Add the line
-  svg.append('path')
-    .datum(data)
-    .attr('fill', 'none')
-    .attr('stroke', 'steelblue')
-    .attr('stroke-width', 2)
-    .attr('d', d3.line<any>()
-      .x(d => x(d.date))
-      .y(d => y(d.score))
-    );
-
-  // Add the points
-  svg.selectAll('circle')
-    .data(data)
-    .enter()
-    .append('circle')
-    .attr('cx', d => x(d.date))
-    .attr('cy', d => y(d.score))
-    .attr('r', 5)
-    .attr('fill', d => color(d.textType) as string)
-    .attr('stroke', 'white')
-    .attr('stroke-width', 1.5);
-
-  // Add tooltips
-  const tooltip = d3.select('body')
-    .append('div')
-    .style('position', 'absolute')
-    .style('background-color', 'white')
-    .style('border', '1px solid #ccc')
-    .style('border-radius', '5px')
-    .style('padding', '10px')
-    .style('box-shadow', '0 0 10px rgba(0, 0, 0, 0.1)')
-    .style('pointer-events', 'none')
-    .style('opacity', 0)
-    .style('z-index', 100);
-
-  svg.selectAll('circle')
-    .on('mouseover', (event, d) => {
-      tooltip.transition()
-        .duration(200)
-        .style('opacity', 0.9);
-      tooltip.html(`
-        <strong>Date:</strong> ${d.date.toLocaleDateString()}<br/>
-        <strong>Score:</strong> ${d.score}%<br/>
-        <strong>Text Type:</strong> ${d.textType}
-      `)
-        .style('left', `${event.pageX + 10}px`)
-        .style('top', `${event.pageY - 28}px`);
-    })
-    .on('mouseout', () => {
-      tooltip.transition()
-        .duration(500)
-        .style('opacity', 0);
-    });
-
-  // Add legend
-  const legend = svg.append('g')
-    .attr('font-family', 'sans-serif')
-    .attr('font-size', 10)
-    .attr('text-anchor', 'end')
-    .selectAll('g')
-    .data(textTypes)
-    .enter().append('g')
-    .attr('transform', (d, i) => `translate(0,${i * 20})`);
-
-  legend.append('rect')
-    .attr('x', width - 19)
-    .attr('width', 19)
-    .attr('height', 19)
-    .attr('fill', d => color(d) as string);
-
-  legend.append('text')
-    .attr('x', width - 24)
-    .attr('y', 9.5)
-    .attr('dy', '0.32em')
-    .text(d => d);
-
-  // Store chart reference
-  chart = { svg, tooltip };
+// Calculate average of scores
+const calculateAverage = (scores: number[]): number => {
+  if (!scores || scores.length === 0) return 0;
+  return scores.reduce((sum, score) => sum + score, 0) / scores.length;
 };
-
-// Watch for changes in chart data or container size
-watch(() => props.chartData, renderChart, { deep: true });
-
-// Handle window resize
-const handleResize = () => {
-  renderChart();
-};
-
-// Setup and teardown
-onMounted(() => {
-  renderChart();
-  window.addEventListener('resize', handleResize);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  if (chart && chart.tooltip) {
-    chart.tooltip.remove();
-  }
-});
 </script>
+
+<style scoped>
+.placeholder-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.content {
+  max-width: 500px;
+  text-align: center;
+}
+
+.icon {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.message {
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.details {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: left;
+}
+
+.data-summary h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #4b5563;
+}
+
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
+
+.category-name {
+  font-weight: 500;
+  flex: 2;
+}
+
+.category-points {
+  flex: 1;
+  color: #6b7280;
+}
+
+.category-average {
+  flex: 1;
+  font-weight: 500;
+}
+
+.no-data {
+  padding: 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+</style>

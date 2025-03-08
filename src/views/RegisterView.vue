@@ -146,7 +146,7 @@ const handleSubmit = async () => {
   showError.value = false;
   
   try {
-    const { data } = await api.post('/auth/register/initiate', {
+    const {data: _data } = await api.post('/auth/register/initiate', {
       username: formData.value.username,
       email: formData.value.email,
       full_name: formData.value.fullName

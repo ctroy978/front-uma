@@ -96,11 +96,9 @@ const handleSubmit = async () => {
   showError.value = false;
   
   try {
-    console.log('Initiating login for:', email.value);
-    const response = await api.post('/auth/login/initiate', {
+    await api.post('/auth/login/initiate', {
       email: email.value
     });
-    
     
     // Clear any existing state
     localStorage.clear();

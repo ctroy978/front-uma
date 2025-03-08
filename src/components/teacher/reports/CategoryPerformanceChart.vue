@@ -52,7 +52,7 @@ const renderChart = () => {
     .range([height, 0]);
 
   // Color scale for categories
-  const color = d3.scaleOrdinal<string>()
+  const color = d3.scaleOrdinal()
     .domain(props.chartData.map(d => d.category))
     .range(d3.schemeCategory10);
 
@@ -88,11 +88,11 @@ const renderChart = () => {
     .enter()
     .append('rect')
     .attr('class', 'bar')
-    .attr('x', (d) => x(d.category) || 0)
-    .attr('y', (d) => y(d.score))
+    .attr('x', (d:CategoryData) => x(d.category) || 0)
+    .attr('y', (d:CategoryData) => y(d.score))
     .attr('width', x.bandwidth())
-    .attr('height', (d) => height - y(d.score))
-    .attr('fill', (d) => color(d.category))
+    .attr('height', (d: CategoryData) => height - y(d.score))
+    .attr('fill', (d: CategoryData) => color(d.category))
     .attr('rx', 4)  // Rounded corners
     .attr('ry', 4);  // Rounded corners
 

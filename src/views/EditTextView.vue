@@ -113,14 +113,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import TextContentEditor from '@/components/teacher/TextContentEditor.vue'
 import ActiveAssessmentWarning from '@/components/teacher/ActiveAssessmentWarning.vue'
 import { useTextStore } from '@/stores/text'
-import type { Text, TextChunk } from '@/types/text'
+import type { TextChunk } from '@/types/text'
 
 interface MetadataForm {
   gradeLevel: number;

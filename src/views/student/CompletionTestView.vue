@@ -352,7 +352,7 @@ const submitAnswer = async () => {
       // No more unanswered questions, so finalize the test
       await finalizeTest();
     }
-  } catch (err) {
+  } catch (err: any) {
     error.value = err.response?.data?.detail || 'Failed to submit answer';
     showError.value = true;
   } finally {
@@ -480,28 +480,7 @@ const finalizeTest = async () => {
     }
   }
 
- // Replace the existing isLastQuestion computed property with this:
-const isLastQuestion = computed(() => {
-  if (!currentQuestion.value) return false;
-  
-  // First, explicitly check if this is the last question based on the backend flag
-  if (currentQuestion.value.is_last === true) {
-    console.log('Backend marked this as the last question');
-    return true;
-  }
-  
-  // Next, check if we're at the final question number
-  if (currentQuestion.value.progress && currentQuestion.value.total_questions) {
-    const isLast = currentQuestion.value.progress === currentQuestion.value.total_questions;
-    if (isLast) {
-      console.log('Progress matches total, this is the last question');
-    }
-    return isLast;
-  }
-  
-  // If we can't determine, default to false - better to show "continue" than "complete" prematurely
-  return false;
-});
+
 
 // Add this new function
 const checkRemainingQuestions = async () => {

@@ -2,7 +2,7 @@
 <template>
   <div class="p-6">
     <!-- Overview Cards -->
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2 mb-8">
       <!-- Available Reports Card -->
       <div class="bg-white overflow-hidden shadow rounded-lg">
         <div class="p-5">
@@ -48,34 +48,11 @@
           </div>
         </div>
       </div>
-
-      <!-- Cumulative Reports Card -->
-      <div class="bg-white overflow-hidden shadow rounded-lg">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <LineChart class="h-6 w-6 text-gray-400" />
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">
-                  Cumulative Reports
-                </dt>
-                <dd class="flex items-baseline">
-                  <div class="text-2xl font-semibold text-gray-900">
-                    {{ isLoading ? '-' : cumulativeReportsCount }}
-                  </div>
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Filter Section -->
     <div class="bg-white p-4 rounded-lg shadow mb-6">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <!-- Student Filter -->
         <div>
           <label for="student-filter" class="block text-sm font-medium text-gray-700">Student</label>
@@ -88,20 +65,6 @@
             <option v-for="student in uniqueStudents" :key="student.id" :value="student.id">
               {{ student.name }}
             </option>
-          </select>
-        </div>
-
-        <!-- Report Type Filter -->
-        <div>
-          <label for="report-type-filter" class="block text-sm font-medium text-gray-700">Report Type</label>
-          <select
-            id="report-type-filter"
-            v-model="filters.reportType"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-          >
-            <option value="">All Reports</option>
-            <option value="single">Single Test Reports</option>
-            <option value="cumulative">Cumulative Reports</option>
           </select>
         </div>
 
@@ -139,7 +102,7 @@
     <!-- Reports Table -->
     <div class="bg-white shadow-sm rounded-lg overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Available Reports</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Reading Assessment Reports</h2>
       </div>
 
       <!-- Loading State -->
@@ -177,8 +140,7 @@
         <thead class="bg-gray-50">
           <tr>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Type</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Text / Coverage</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Text</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
             <th scope="col" class="relative px-6 py-3">
@@ -200,20 +162,8 @@
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-              <span 
-                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
-                :class="report.type === 'cumulative' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'"
-              >
-                {{ report.type === 'cumulative' ? 'Cumulative' : 'Single Test' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-900">
-                {{ report.type === 'cumulative' ? `${report.reportCount} Tests` : report.textTitle }}
-              </div>
-              <div class="text-sm text-gray-500">
-                {{ report.type === 'cumulative' ? `${report.dateRange || '-'} days` : report.textType }}
-              </div>
+              <div class="text-sm text-gray-900">{{ report.textTitle }}</div>
+              <div class="text-sm text-gray-500">{{ report.textType }}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ formatDate(report.date) }}
@@ -229,7 +179,7 @@
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <router-link 
                 :to="{ 
-                  name: report.type === 'cumulative' ? 'cumulative-report' : 'single-report', 
+                  name: 'single-report', 
                   params: { 
                     studentId: report.studentId, 
                     reportId: report.id 
@@ -255,7 +205,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { FileText, Users, LineChart, XCircle, FileQuestion, User, AlertCircle } from 'lucide-vue-next';
+import { FileText, Users, XCircle, FileQuestion, User, AlertCircle } from 'lucide-vue-next';
 import { useReportsStore } from '@/stores/reports';
 import type { ReportListItem } from '@/stores/reports';
 
@@ -266,7 +216,6 @@ const error = ref('');
 
 const filters = ref({
   studentId: '',
-  reportType: '',
   dateRange: ''
 });
 
@@ -275,11 +224,8 @@ const uniqueStudents = computed(() => reportsStore.uniqueStudents);
 
 const uniqueStudentCount = computed(() => uniqueStudents.value.length);
 
-const cumulativeReportsCount = computed(() => reportsStore.cumulativeReportsCount);
-
 const hasActiveFilters = computed(() => 
   filters.value.studentId !== '' || 
-  filters.value.reportType !== '' || 
   filters.value.dateRange !== ''
 );
 
@@ -295,14 +241,6 @@ const activeFilters = computed(() => {
     });
   }
   
-  if (filters.value.reportType) {
-    result.push({
-      key: 'reportType',
-      label: 'Report Type',
-      value: filters.value.reportType === 'cumulative' ? 'Cumulative' : 'Single Test'
-    });
-  }
-  
   if (filters.value.dateRange) {
     result.push({
       key: 'dateRange',
@@ -315,9 +253,10 @@ const activeFilters = computed(() => {
 });
 
 const filteredReports = computed(() => {
+  // Use the store's filterReports method with our filters
   return reportsStore.filterReports(
     filters.value.studentId, 
-    filters.value.reportType, 
+    'single', // Always filter for single reports
     filters.value.dateRange
   );
 });
@@ -326,14 +265,18 @@ const filteredReports = computed(() => {
 const formatDate = (dateString: string) => {
   if (!dateString) return 'N/A';
   
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return dateString;
+  }
 };
 
 const getScoreColorClass = (score: number) => {
@@ -370,7 +313,6 @@ const fetchReports = async () => {
 
 // Watch for filter changes
 watch(filters, () => {
-  // You could implement debounced filtering here if needed
   console.log('Filters changed:', filters.value);
 }, { deep: true });
 

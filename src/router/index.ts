@@ -35,7 +35,7 @@ const routes: RouteRecordRaw[] = [
       component: () => import('../views/VerifyLoginView.vue'),
       props: true,
       meta: { public: true },
-      beforeEnter: (to) => {
+      beforeEnter: (_to) => {
           // Match registration's simpler verification check
           if (!localStorage.getItem('pendingVerification')) {
               return { name: 'login' }
@@ -54,7 +54,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/VerifyView.vue'),
     props: true,
     meta: { public: true },
-    beforeEnter: (to) => {
+    beforeEnter: (_to) => {
       if (!localStorage.getItem('pendingVerification')) {
         return { name: 'register' }
       }
@@ -139,22 +139,7 @@ const routes: RouteRecordRaw[] = [
       component: () => import('@/views/teacher/SingleReportView.vue'),
       props: true
     },
-    {
-      path: 'analysis/student/:studentId/cumulative-report/:reportId',
-      name: 'cumulative-report',
-      component: () => import('@/views/teacher/CumulativeReportView.vue'),
-      props: true
-    },
-    {
-      path: '/teacher/reports/student/:studentId/cumulative',
-      name: 'cumulative-report',
-      component: () => import('@/views/teacher/CumulativeReportView.vue'),
-      props: true,
-      meta: {
-        requiresAuth: true,
-        allowedRoles: ['TEACHER', 'ADMIN']
-      }
-    },
+   
   ]
 },
 
@@ -237,7 +222,7 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) => {
+router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormalized, next: NavigationGuardNext) => {
   const authStore = useAuthStore()
   
   // Initialize auth store if needed
