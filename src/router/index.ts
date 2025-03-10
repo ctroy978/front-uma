@@ -80,6 +80,7 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+
   // Teacher Routes
 
 {
