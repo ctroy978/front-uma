@@ -79,6 +79,15 @@ const routes: RouteRecordRaw[] = [
       allowedRoles: ['ADMIN']
     }
   },
+  {
+    path: '/admin/database',
+    name: 'admin-database',
+    component: () => import('@/views/admin/DatabaseManagementView.vue'),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['ADMIN']
+    }
+  },
 
 
   // Teacher Routes

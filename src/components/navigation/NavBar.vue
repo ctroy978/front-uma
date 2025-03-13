@@ -43,15 +43,39 @@
               Admin Portal
             </router-link>
 
-            <!-- New Whitelist Admin Link -->
-            <router-link
-              v-if="canAccessAdmin"
-              :to="{ name: 'admin-whitelist' }"
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              active-class="bg-gray-100"
-            >
-              Email Whitelist
-            </router-link>
+            <!-- Admin Links - Dropdown with better hover handling -->
+            <div v-if="canAccessAdmin" class="relative inline-block text-left">
+              <button 
+                @mouseenter="showAdminDropdown = true"
+                class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 focus:outline-none"
+              >
+                Admin Tools
+                <svg class="w-4 h-4 ml-1 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div 
+                v-if="showAdminDropdown" 
+                @mouseleave="showAdminDropdown = false"
+                @mouseenter="showAdminDropdown = true"
+                class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"
+              >
+                <div class="py-1">
+                  <router-link
+                    :to="{ name: 'admin-whitelist' }"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Email Whitelist
+                  </router-link>
+                  <router-link
+                    :to="{ name: 'admin-database' }"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Database Management
+                  </router-link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -160,16 +184,28 @@
             Admin Portal
           </router-link>
 
-          <!-- New Mobile Whitelist Admin Link -->
-          <router-link
-            v-if="canAccessAdmin"
-            :to="{ name: 'admin-whitelist' }"
-            class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            active-class="bg-gray-100"
-            @click="isMobileMenuOpen = false"
-          >
-            Email Whitelist
-          </router-link>
+          <!-- Admin Tools Section in Mobile -->
+          <div v-if="canAccessAdmin" class="pt-2 pb-1">
+            <div class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Admin Tools
+            </div>
+            <router-link
+              :to="{ name: 'admin-whitelist' }"
+              class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              active-class="bg-gray-100"
+              @click="isMobileMenuOpen = false"
+            >
+              Email Whitelist
+            </router-link>
+            <router-link
+              :to="{ name: 'admin-database' }"
+              class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              active-class="bg-gray-100"
+              @click="isMobileMenuOpen = false"
+            >
+              Database Management
+            </router-link>
+          </div>
 
           <button
             @click="handleLogout"
@@ -209,6 +245,7 @@ import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 const isMobileMenuOpen = ref(false)
+const showAdminDropdown = ref(false)
 
 // Authentication state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
