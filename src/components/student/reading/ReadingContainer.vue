@@ -47,7 +47,10 @@
             <!-- Content -->
             <div class="p-6">
               <div class="prose prose-lg max-w-none">
-                <div class="whitespace-pre-wrap break-words font-normal text-gray-900 text-xl leading-relaxed">
+                <div 
+                  class="whitespace-pre-wrap break-words font-normal text-gray-900 text-xl leading-relaxed"
+                  @dblclick="handleTextDoubleClick"
+                >
                   {{ currentChunk.content }}
                 </div>
               </div>
@@ -100,11 +103,23 @@
           </div>
         </div>
 
-        <!-- Question Section -->
-        <div class="w-2/5">
+        <!-- Question and Dictionary Section -->
+        <div class="w-2/5 flex flex-col">
+          <!-- Question Panel -->
           <QuestionPanel 
             v-if="currentChunk && !isLoading" 
             @complete="handleComplete"
+          />
+          
+          <!-- Dictionary Panel -->
+          <DictionaryPanel
+            v-if="currentChunk && !isLoading"
+            :selected-word="dictionaryStore.selectedWord"
+            :is-loading="dictionaryStore.isLoading"
+            :error="dictionaryStore.error"
+            :word-data="dictionaryStore.wordData"
+            @clear="dictionaryStore.clearSelectedWord()"
+            @retry="retryWordLookup"
           />
         </div>
       </div>
@@ -128,17 +143,19 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
+import { useDictionaryStore } from '@/stores/dictionary'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import QuestionPanel from './QuestionPanel.vue'
 import TextAudioPlayer from '@/components/student/reading/TextAudioPlayer.vue'
 import TextSimplifier from '@/components/student/reading/TextSimplifier.vue'
-
+import DictionaryPanel from '@/components/student/reading/DictionaryPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const readingStore = useReadingStore()
+const dictionaryStore = useDictionaryStore()
 
 // Local state
 const showError = ref(false)
@@ -206,6 +223,25 @@ const handleComplete = async () => {
     showError.value = true
   }
 }
+
+// Dictionary functionality
+const handleTextDoubleClick = (event: MouseEvent) => {
+  // Get the selection
+  const selection = window.getSelection()
+  
+  if (selection && selection.toString().trim()) {
+    // We have a selection
+    const selectedWord = selection.toString().trim()
+    dictionaryStore.setSelectedWord(selectedWord)
+  }
+}
+
+const retryWordLookup = () => {
+  if (dictionaryStore.selectedWord) {
+    dictionaryStore.lookupWord(dictionaryStore.selectedWord)
+  }
+}
+
 // Lifecycle hooks
 onMounted(async () => {
   const textId = route.params.textId as string
@@ -218,6 +254,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   readingStore.resetState()
+  dictionaryStore.clearSelectedWord()
 })
 
 // Navigation guard
