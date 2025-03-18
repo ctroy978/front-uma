@@ -146,7 +146,7 @@
     if (!props.wordData || !props.wordData.phonetics) return null
     
     // Find the first phonetic entry with a non-empty audio URL
-    const phonetic = props.wordData.phonetics.find(p => p.audio && p.audio.trim() !== '')
+    const phonetic = props.wordData.phonetics.find((p: {audio?: string}) => p.audio && p.audio.trim() !== '')
     return phonetic ? phonetic.audio : null
   })
   

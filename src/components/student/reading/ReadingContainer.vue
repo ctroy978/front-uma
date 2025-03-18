@@ -225,7 +225,7 @@ const handleComplete = async () => {
 }
 
 // Dictionary functionality
-const handleTextDoubleClick = (event: MouseEvent) => {
+const handleTextDoubleClick = () => {
   // Get the selection
   const selection = window.getSelection()
   

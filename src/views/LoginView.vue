@@ -95,6 +95,7 @@ const handleSubmit = async () => {
   error.value = '';
   showError.value = false;
   
+  
   try {
     await api.post('/auth/login/initiate', {
       email: email.value
