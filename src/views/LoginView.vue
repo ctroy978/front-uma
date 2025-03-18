@@ -95,10 +95,12 @@ const handleSubmit = async () => {
   error.value = '';
   showError.value = false;
   
+  // Normalize the email to lowercase before sending
+  const normalizedEmail = email.value.toLowerCase();
   
   try {
     await api.post('/auth/login/initiate', {
-      email: email.value
+      email: normalizedEmail
     });
     
     // Clear any existing state
@@ -107,7 +109,7 @@ const handleSubmit = async () => {
     // Match registration pattern for storage
     localStorage.setItem('pendingVerification', 'true');
     localStorage.setItem('pendingLogin', JSON.stringify({
-      email: email.value
+      email: normalizedEmail
     }));
     
     showSuccess.value = true;
