@@ -149,6 +149,11 @@ const routes: RouteRecordRaw[] = [
       component: () => import('@/views/teacher/SingleReportView.vue'),
       props: true
     },
+    {
+      path: 'bypass',
+      name: 'teacher-bypass',
+      component: () => import('@/views/teacher/BypassCodeView.vue')
+    },
    
   ]
 },

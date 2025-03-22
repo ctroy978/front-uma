@@ -49,6 +49,18 @@
                 <BarChart2 class="mr-3 h-5 w-5 text-gray-400" />
                 <span class="truncate">Analysis</span>
               </router-link>
+              <router-link
+                :to="{ name: 'teacher-bypass' }"
+                class="group flex items-center px-2 py-2 text-sm font-medium rounded-md"
+                :class="[
+                  currentRoute === 'teacher-bypass'
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ]"
+              >
+                <Key class="mr-3 h-5 w-5 text-gray-400" />
+                <span class="truncate">Bypass Code</span>
+              </router-link>
             </nav>
           </div>
         </div>
@@ -99,7 +111,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Home, BookOpen, BarChart2 } from 'lucide-vue-next'
+import { Home, BookOpen, BarChart2, Key } from 'lucide-vue-next'
 
 const route = useRoute()
 
@@ -135,6 +147,8 @@ const pageTitle = computed(() => {
       return 'Test Report'
     case 'cumulative-report':
       return 'Cumulative Report'
+    case 'teacher-bypass':
+      return 'Bypass Code Management'
     default:
       return ''
   }
