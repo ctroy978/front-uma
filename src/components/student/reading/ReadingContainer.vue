@@ -13,6 +13,14 @@
             <ArrowLeft class="h-5 w-5 mr-2" />
             Back to Dashboard
           </button>
+
+          <!-- Reading progress indicator -->
+          <div class="text-sm text-gray-600">
+            <span v-if="isPreQuestionMode" class="inline-flex items-center">
+              <BookOpen class="h-4 w-4 mr-1 text-indigo-600" />
+              Reading Check
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -30,12 +38,28 @@
 
           <!-- Error State -->
           <BaseAlert
-            v-if="error"
+            v-if="storeError"
             v-model="showError"
             variant="error"
-            :message="error || ''"
+            :message="storeError || ''"
             dismissible
           />
+
+          <!-- Reading Instructions Banner -->
+          <div v-if="!isLoading && isPreQuestionMode" class="mb-4 bg-indigo-50 border border-indigo-100 rounded-md p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <Info class="h-5 w-5 text-indigo-600" />
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-indigo-800">Reading First</h3>
+                <div class="mt-2 text-sm text-indigo-700">
+                  <p>Read the text below carefully before answering the question on the right. Your first task is to show
+                  that you understand what you've read.</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Text Card -->
           <div v-if="currentChunk && !isLoading" class="bg-white shadow rounded-lg">
@@ -63,7 +87,6 @@
           <div v-if="currentChunk && !isLoading" class="grid grid-cols-2 gap-4 mt-4">
             <!-- Audio Player -->
             <TextAudioPlayer
-              :chunk-content="currentChunk.content"
               :chunk-id="currentChunk.id"
             />
 
@@ -87,7 +110,7 @@
               <BaseButton
                 v-if="currentChunk.has_next"
                 variant="primary"
-                :disabled="!canProgress || navigationLoading"
+                :disabled="!canProgress || navigationLoading || isPreQuestionMode || !hasAnsweredMainQuestion"
                 :loading="navigationLoading"
                 @click="handleNext"
               >
@@ -96,7 +119,7 @@
               <BaseButton
                 v-else
                 variant="success"
-                :disabled="!canProgress"
+                :disabled="!canProgress || isPreQuestionMode || !hasAnsweredMainQuestion"
                 @click="handleComplete"
               >
                 Complete Reading
@@ -105,9 +128,8 @@
           </div>
         </div>
 
-        <!-- Question and Dictionary Section -->
-        <div class="w-2/5 flex flex-col">
-          <!-- Question Panel -->
+        <!-- Question Section -->
+        <div class="w-2/5">
           <QuestionPanel 
             v-if="currentChunk && !isLoading" 
             @complete="handleComplete"
@@ -115,7 +137,7 @@
           
           <!-- Dictionary Panel -->
           <DictionaryPanel
-            v-if="currentChunk && !isLoading"
+            v-if="currentChunk && !isLoading && dictionaryStore"
             :selected-word="dictionaryStore.selectedWord"
             :is-loading="dictionaryStore.isLoading"
             :error="dictionaryStore.error"
@@ -143,7 +165,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Info } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import { useDictionaryStore } from '@/stores/dictionary'
 import BaseAlert from '@/components/base/BaseAlert.vue'
@@ -169,16 +191,17 @@ const completionMessage = ref('')
 const { 
   currentChunk, 
   isLoading, 
-  error, 
+  error: storeError, 
   textTitle,
   canProgress,
   feedback,
   navigationLoading,
-  assessmentId
+  assessmentId,
+  isPreQuestionMode,
+  hasAnsweredMainQuestion
 } = storeToRefs(readingStore)
 
 // Methods
-
 const handleCopyAttempt = () => {
   console.log('Copy attempt detected')
   // Optionally track this behavior or show a message to the student
@@ -268,8 +291,14 @@ onUnmounted(() => {
 // Navigation guard
 const beforeUnload = (e: BeforeUnloadEvent) => {
   if (feedback.value) {
-    e.preventDefault()
-    e.returnValue = ''
+    // The standard way is to call preventDefault() and then return a string
+    // Modern browsers will show a generic message regardless of the returned string
+    e.preventDefault();
+    // TypeScript flags returnValue as deprecated, but it's still needed for older browsers
+    // We'll use it but suppress the warning with @ts-ignore
+    // @ts-ignore
+    e.returnValue = '';
+    return '';
   }
 }
 

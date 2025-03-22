@@ -6,14 +6,30 @@
       <!-- Question Header -->
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-medium text-gray-900">
-          Question
+          {{ isPreQuestion ? 'Reading Check' : 'Question' }}
         </h3>
         <span 
+          v-if="!isPreQuestion"
           class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
           :class="getCategoryClass(currentQuestion.category)"
         >
           {{ formatCategory(currentQuestion.category) }}
         </span>
+        <span 
+          v-else
+          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+        >
+          <BookOpen class="h-3 w-3 mr-1" />
+          Comprehension Check
+        </span>
+      </div>
+
+      <!-- Pre-Question Banner -->
+      <div v-if="isPreQuestion" class="bg-indigo-50 border border-indigo-100 rounded-md p-3 text-sm text-indigo-700">
+        <p>
+          <strong>First things first:</strong> Please show your understanding of this passage by answering this basic
+          question. Once you demonstrate you've read the text, you'll move on to more in-depth questions.
+        </p>
       </div>
 
       <!-- Question Text -->
@@ -26,8 +42,10 @@
         <BaseTextarea
           v-model="answerInput"
           name="answer"
-          label="Your Answer"
-          placeholder="Type your answer here. Be sure to explain your reasoning and use evidence from the text."
+          :label="isPreQuestion ? 'Your Response' : 'Your Answer'"
+          :placeholder="isPreQuestion 
+            ? 'Briefly show that you have read the text. A few sentences is fine.' 
+            : 'Type your answer here. Be sure to explain your reasoning and use evidence from the text.'"
           :disabled="isSubmitting"
           :error="errorMessage"
           required
@@ -40,7 +58,7 @@
           :disabled="!answerInput.trim() || isSubmitting"
           class="w-full"
         >
-          Submit Answer
+          Submit {{ isPreQuestion ? 'Response' : 'Answer' }}
         </BaseButton>
       </form>
 
@@ -76,19 +94,43 @@
             </div>
             <div class="ml-3">
               <p class="text-sm whitespace-pre-wrap">{{ feedback }}</p>
+              
+              <!-- For regular question feedback -->
               <div 
-                v-if="isCorrect && !canProgress" 
+                v-if="isCorrect && !isPreQuestion && !canProgress" 
                 class="mt-2 text-sm bg-green-100 p-2 rounded-md"
               >
-                Get one more correct answer to unlock the next section.
+                {{ hasAnsweredMainQuestion ? 'Get one more correct answer to unlock the next section.' : 'Good answer! Keep answering correctly to unlock the next section.' }}
+              </div>
+              
+              <!-- Only show transition message for correctly answered pre-questions -->
+              <div 
+                v-if="isCorrect && isPreQuestion && !isPreQuestionMode" 
+                class="mt-2 text-sm bg-green-100 p-2 rounded-md"
+              >
+                Great! Now you'll move on to analytical questions about the text.
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Navigation Status (hidden in production) -->
+        <div 
+          v-if="showDebugPanel"
+          :key="'nav-status'"
+          class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-sm"
+        >
+          <p class="font-medium">Navigation Status:</p>
+          <ul class="mt-1 ml-4 list-disc text-xs">
+            <li>Pre-question passed: <span class="font-semibold">{{ !isPreQuestion ? "Yes" : "No" }}</span></li>
+            <li>Main question answered: <span class="font-semibold">{{ hasAnsweredMainQuestion ? "Yes" : "No" }}</span></li>
+            <li>Can progress: <span class="font-semibold">{{ canProgress ? "Yes" : "No" }}</span></li>
+          </ul>
+        </div>
+
         <!-- Progress Status -->
         <button 
-          v-if="isCorrect && canProgress" 
+          v-if="showContinueButton"
           :key="'progress'"
           class="mt-4 w-full flex items-center justify-center bg-blue-50 hover:bg-blue-100 
                 text-blue-700 p-4 rounded-md border border-blue-200 transition-colors"
@@ -126,46 +168,81 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { CheckCircle, AlertCircle, ArrowRight } from 'lucide-vue-next'
+import { CheckCircle, AlertCircle, ArrowRight, BookOpen } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
+
+// Flag to enable/disable debug panel - can be set to false for production
+const isDevMode = ref(false) // Set to false to hide in production
 
 const emit = defineEmits<{
   (e: 'complete'): void
 }>()
 
 const readingStore = useReadingStore()
-const { currentQuestion, isLoading, error, feedback, canProgress, isSubmitting, navigationLoading, currentChunk } = storeToRefs(readingStore)
+const { 
+  currentQuestion, 
+  isLoading, 
+  error: storeError, 
+  feedback, 
+  canProgress, 
+  isSubmitting, 
+  navigationLoading, 
+  currentChunk,
+  isPreQuestionMode,
+  hasAnsweredMainQuestion
+} = storeToRefs(readingStore)
 
 // Local state
 const answerInput = ref('')
 const showError = ref(false)
 
 // Computed properties
+const isPreQuestion = computed(() => currentQuestion.value?.is_pre_question || isPreQuestionMode.value)
 const isCorrect = computed(() => canProgress.value || (feedback.value && readingStore.hasFeedback))
 
+// Computed property for debug panel
+const showDebugPanel = computed(() => {
+  return isDevMode.value && isCorrect.value && !isPreQuestion.value
+})
+
+// New computed property to determine if we should show the continue button
+const showContinueButton = computed(() => {
+  return (
+    isCorrect.value && 
+    !isPreQuestion.value && 
+    (canProgress.value || hasAnsweredMainQuestion.value)
+  )
+})
+
 // Convert null error to undefined for BaseTextarea
-const errorMessage = computed(() => error.value || undefined)
+const errorMessage = computed(() => storeError.value || undefined)
 
 // Convert null error to undefined for BaseAlert
-const alertMessage = computed(() => error.value || undefined)
+const alertMessage = computed(() => storeError.value || undefined)
 
 // Question category styling
 const categoryClasses: Record<string, string> = {
   literal_basic: 'bg-blue-100 text-blue-800',
   literal_detailed: 'bg-green-100 text-green-800',
   inferential_simple: 'bg-yellow-100 text-yellow-800',
-  inferential_complex: 'bg-purple-100 text-purple-800'
+  inferential_complex: 'bg-purple-100 text-purple-800',
+  vocabulary_context: 'bg-pink-100 text-pink-800',
+  structural_basic: 'bg-orange-100 text-orange-800',
+  structural_advanced: 'bg-purple-100 text-purple-800'
 }
 
 // Methods
-const getCategoryClass = (category: string): string => {
+const getCategoryClass = (category?: string): string => {
+  if (!category) return 'bg-gray-100 text-gray-800';
   return categoryClasses[category] || 'bg-gray-100 text-gray-800'
 }
 
-const formatCategory = (category: string): string => {
+const formatCategory = (category?: string): string => {
+  if (!category) return '';
+  
   return category
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -204,7 +281,7 @@ watch(() => currentQuestion.value?.question_text, () => {
 }, { immediate: true })
 
 // Watch for errors to show alert
-watch(() => error.value, (newError) => {
+watch(() => storeError.value, (newError) => {
   if (newError) {
     showError.value = true
   }

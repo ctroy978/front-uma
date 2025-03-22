@@ -142,20 +142,14 @@
         </div>
       </div>
       
-      <!-- Auth Buttons -->
+      <!-- Portal Button -->
       <div class="mt-12 text-center">
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <div class="flex justify-center">
           <router-link 
-            to="/login" 
+            :to="{ name: activeTab === 'student' ? 'student-dashboard' : 'teacher-dashboard' }"
             class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
           >
-            Sign In
-          </router-link>
-          <router-link 
-            to="/register" 
-            class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
-          >
-            Create Account
+            {{ activeTab === 'student' ? 'Go to Student Portal' : 'Go to Teacher Portal' }}
           </router-link>
         </div>
       </div>

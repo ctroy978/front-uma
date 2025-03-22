@@ -11,9 +11,11 @@ interface Chunk {
 }
 
 interface Question {
-  category: string
+  category?: string
   question_text: string
   assessment_id: string
+  is_pre_question?: boolean
+  from_cache?: boolean
 }
 
 interface EvaluationResponse {
@@ -35,10 +37,12 @@ interface ReadingState {
   textTitle: string | null
   currentChunk: Chunk | null
   currentQuestion: Question | null
+  isPreQuestionMode: boolean
   isLoading: boolean
   error: string | null
   feedback: string | null
   canProgress: boolean
+  hasAnsweredMainQuestion: boolean // Track if main question was answered correctly
   isSubmitting: boolean
   navigationLoading: boolean
   isActive: boolean
@@ -72,10 +76,12 @@ export const useReadingStore = defineStore('reading', {
     textTitle: null,
     currentChunk: null,
     currentQuestion: null,
+    isPreQuestionMode: true, // Start with pre-question mode active
     isLoading: false,
     error: null,
     feedback: null,
     canProgress: false,
+    hasAnsweredMainQuestion: false, // Track if main question was answered correctly
     isSubmitting: false,
     navigationLoading: false,
     isActive: false,
@@ -92,8 +98,8 @@ export const useReadingStore = defineStore('reading', {
     hasActiveAssessment: (state): boolean => !!state.assessmentId,
     hasFeedback: (state): boolean => !!state.feedback,
     isAssessmentActive: (state): boolean => state.isActive,
-    // New getters
-    hasSimplifiedText: (state): boolean => !!state.simplifiedText
+    hasSimplifiedText: (state): boolean => !!state.simplifiedText,
+    isInPreQuestionMode: (state): boolean => state.isPreQuestionMode,
   },
 
   actions: {
@@ -109,9 +115,12 @@ export const useReadingStore = defineStore('reading', {
         this.textTitle = text_title
         this.currentChunk = chunk
         this.isActive = true
+        this.isPreQuestionMode = true // Always start with a pre-question
+        this.hasAnsweredMainQuestion = false
+        this.canProgress = false
 
-        // Get initial question
-        await this.fetchCurrentQuestion()
+        // Fetch the pre-question first
+        await this.fetchPreQuestion()
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to start reading'
         throw error
@@ -148,11 +157,31 @@ export const useReadingStore = defineStore('reading', {
         // Clear simplified text when moving to a new chunk
         this.clearSimplifiedText()
         
-        // Get new question for this chunk
-        await this.fetchCurrentQuestion()
+        // Always start with a pre-question for a new chunk
+        this.isPreQuestionMode = true
+        await this.fetchPreQuestion()
       } catch (error: any) {
-        
         this.error = error.response?.data?.detail || 'Failed to get next chunk'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async fetchPreQuestion() {
+      if (!this.assessmentId) return
+
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const response = await api.get(`/questions/pre-question/${this.assessmentId}`)
+        this.currentQuestion = {
+          ...response.data,
+          is_pre_question: true
+        }
+      } catch (error: any) {
+        this.error = error.response?.data?.detail || 'Failed to fetch pre-question'
         throw error
       } finally {
         this.isLoading = false
@@ -167,7 +196,10 @@ export const useReadingStore = defineStore('reading', {
 
       try {
         const response = await api.get(`/questions/current/${this.assessmentId}`)
-        this.currentQuestion = response.data
+        this.currentQuestion = {
+          ...response.data,
+          is_pre_question: false
+        }
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to fetch question'
         throw error
@@ -185,19 +217,66 @@ export const useReadingStore = defineStore('reading', {
       try {
         const response = await api.post(`/evaluation/${this.assessmentId}`, {
           answer,
-          question: this.currentQuestion.question_text
+          question: this.currentQuestion.question_text,
+          is_pre_question: this.isPreQuestionMode
         })
 
         const evaluation: EvaluationResponse = response.data
 
-        // Update state based on evaluation
+        // Update feedback
         this.feedback = evaluation.feedback
-        this.canProgress = evaluation.can_progress
-
-        // Always update if we get a next question
-        if (evaluation.next_question) {
-          this.currentQuestion = evaluation.next_question
+        
+        // Log the evaluation response for debugging
+        console.log('Evaluation response:', { evaluation, isPreQuestionMode: this.isPreQuestionMode })
+        
+        // If we're in pre-question mode and answer is correct
+        if (this.isPreQuestionMode && evaluation.is_correct) {
+          console.log('Pre-question answered correctly')
+          this.isPreQuestionMode = false
+          
+          // If the API returned a next question, use it
+          if (evaluation.next_question) {
+            this.currentQuestion = {
+              ...evaluation.next_question,
+              is_pre_question: false
+            }
+          } else {
+            // Otherwise fetch a regular question
+            await this.fetchCurrentQuestion()
+          }
+        } 
+        // If we're in regular question mode and answer is correct
+        else if (!this.isPreQuestionMode && evaluation.is_correct) {
+          console.log('Main question answered correctly')
+          this.hasAnsweredMainQuestion = true
+          this.canProgress = true // Always allow progress after answering a main question correctly
+          
+          // If we got a new question, update it
+          if (evaluation.next_question) {
+            this.currentQuestion = {
+              ...evaluation.next_question,
+              is_pre_question: false
+            }
+          }
         }
+        // If answer is incorrect
+        else if (!evaluation.is_correct) {
+          console.log('Question answered incorrectly')
+          // Update with the new question if provided
+          if (evaluation.next_question) {
+            this.currentQuestion = {
+              ...evaluation.next_question,
+              is_pre_question: this.isPreQuestionMode
+            }
+          }
+        }
+
+        // Log state after processing
+        console.log('State after processing:', {
+          isPreQuestionMode: this.isPreQuestionMode,
+          hasAnsweredMainQuestion: this.hasAnsweredMainQuestion,
+          canProgress: this.canProgress
+        })
 
         return evaluation
       } catch (error: any) {
@@ -232,8 +311,30 @@ export const useReadingStore = defineStore('reading', {
     },
 
     async handleNavigation(): Promise<NavigationResult> {
-      if (!this.canProgress) return { completed: false };
+      // Log navigation conditions
+      console.log('Navigation conditions:', {
+        isPreQuestionMode: this.isPreQuestionMode,
+        hasAnsweredMainQuestion: this.hasAnsweredMainQuestion,
+        canProgress: this.canProgress
+      })
+      
+      // Check if the student can progress to the next chunk
+      if (this.isPreQuestionMode) {
+        console.log('Cannot navigate: Still in pre-question mode')
+        return { completed: false };
+      }
+      
+      if (!this.hasAnsweredMainQuestion) {
+        console.log('Cannot navigate: Main question not answered correctly')
+        return { completed: false };
+      }
+      
+      if (!this.canProgress) {
+        console.log('Cannot navigate: API does not allow progress')
+        return { completed: false };
+      }
 
+      console.log('All navigation conditions met, proceeding...')
       this.navigationLoading = true;
       this.error = null;
       
@@ -276,7 +377,7 @@ export const useReadingStore = defineStore('reading', {
       }
     },
 
-    // New methods for simplified text with caching
+    // Simplified text methods
     async simplifyCurrentChunk() {
       if (!this.assessmentId || !this.currentChunk) {
         this.simplifyError = 'No text available to simplify'
@@ -289,12 +390,9 @@ export const useReadingStore = defineStore('reading', {
       this.isTextCached = false
 
       try {
-        console.log('Calling API at:', `/simplify/chunk/${this.assessmentId}`);
         const response = await api.get<SimplifiedTextResponse>(
           `/simplify/chunk/${this.assessmentId}`
         )
-        
-        console.log('API response received:', response.data);
         
         // Set the simplified text data
         this.simplifiedText = response.data.simplified_text
@@ -304,7 +402,6 @@ export const useReadingStore = defineStore('reading', {
         
         return response.data
       } catch (error: any) {
-        console.error('Error in simplifyCurrentChunk:', error);
         this.simplifyError = error.response?.data?.detail || 'Failed to simplify text'
         throw error
       } finally {
@@ -324,6 +421,8 @@ export const useReadingStore = defineStore('reading', {
       this.currentQuestion = null
       this.feedback = null
       this.canProgress = false
+      this.hasAnsweredMainQuestion = false  // Reset main question status
+      this.isPreQuestionMode = true // Reset to pre-question mode
     },
 
     resetState() {
@@ -331,10 +430,12 @@ export const useReadingStore = defineStore('reading', {
       this.textTitle = null
       this.currentChunk = null
       this.currentQuestion = null
+      this.isPreQuestionMode = true // Reset to pre-question mode
       this.isLoading = false
       this.error = null
       this.feedback = null
       this.canProgress = false
+      this.hasAnsweredMainQuestion = false  // Reset main question status
       this.isSubmitting = false
       this.navigationLoading = false  
       this.isActive = false
