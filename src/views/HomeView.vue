@@ -125,6 +125,7 @@
                 <li><strong>Audio generation:</strong> Submit texts after school hours when possible to give the server time to compile audio files.</li>
                 <li><strong>Text formatting:</strong> Dashes and unusual punctuation may cause issues with audio generation. Simple punctuation works best.</li>
                 <li><strong>Student progress:</strong> You can monitor which students have started and completed each text from your dashboard.</li>
+                <li><strong>Impossible Question:</strong> Use your bypass code to get students past questions when the AI gets stuck.</li>
               </ul>
             </div>
           </div>
