@@ -1,6 +1,18 @@
 <!-- src/views/student/CompletionTestView.vue -->
 <template>
   <div class="min-h-screen bg-gray-100">
+    <!-- Copy Attempt Alert (ADD THIS) -->
+    <div 
+      v-if="showCopyAlert"
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-50 flex items-center"
+      role="alert"
+    >
+      <div class="flex-shrink-0 mr-2">
+        <ShieldAlert class="h-5 w-5 text-red-500" />
+      </div>
+      <span>Copying test questions is not allowed</span>
+    </div>
+
     <!-- Top Navigation Bar -->
     <div class="bg-white shadow">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -87,8 +99,13 @@
         </div>
       </div>
 
-      <!-- Current Question -->
-      <div v-if="!isLoading && currentQuestion && !testResults" class="bg-white shadow rounded-lg p-6">
+      <!-- Current Question (MODIFY THIS SECTION) -->
+      <div 
+        v-if="!isLoading && currentQuestion && !testResults" 
+        class="bg-white shadow rounded-lg p-6"
+        @copy.prevent="handleCopyAttempt"
+        @cut.prevent="handleCopyAttempt"
+      >
         <!-- Progress Bar -->
         <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
           <div 
@@ -100,17 +117,17 @@
         <!-- Category Badge -->
         <div class="mb-4 flex justify-end">
           <span 
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium no-select"
             :class="getCategoryClass(currentQuestion.category)"
           >
             {{ formatCategory(currentQuestion.category) }}
           </span>
         </div>
         
-        <!-- Question Text -->
-        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ currentQuestion.question_text }}</h3>
+        <!-- Question Text (ADD no-select CLASS) -->
+        <h3 class="text-lg font-medium text-gray-900 mb-4 no-select">{{ currentQuestion.question_text }}</h3>
         
-        <!-- Answer Input -->
+        <!-- Answer Input (unchanged - allow typing here) -->
         <div class="mt-6">
           <BaseTextarea
             v-model="currentAnswer"
@@ -236,9 +253,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, AlertCircle, Info } from 'lucide-vue-next'
+import { 
+  ArrowLeft, 
+  AlertCircle, 
+  Info, 
+  ShieldAlert // ADD THIS IMPORT
+} from 'lucide-vue-next'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
@@ -265,12 +287,66 @@ const showConfirmDialog = ref(false)
 const hasRemainingQuestions = ref(true)
 const totalQuestionsCount = ref(0)
 
+// ADD THESE NEW STATE VARIABLES
+const showCopyAlert = ref(false)
+const copyAlertTimer = ref<number | null>(null)
+
 // Computed properties
 const errorMessage = computed(() => error.value || undefined)
 
 // Track visited question IDs to calculate accurate progress
 const visitedQuestionIds = ref(new Set<string>())
 const currentQuestionIndex = ref(0)
+
+// ADD THIS NEW METHOD FOR COPY PREVENTION
+const handleCopyAttempt = (event: Event) => {
+  // Prevent the default copy/cut action
+  event.preventDefault()
+  
+  // Show the copy alert
+  showCopyAlert.value = true
+  
+  // Clear any existing timer
+  if (copyAlertTimer.value !== null) {
+    window.clearTimeout(copyAlertTimer.value)
+  }
+  
+  // Set a timer to hide the alert after 3 seconds
+  copyAlertTimer.value = window.setTimeout(() => {
+    showCopyAlert.value = false
+  }, 3000)
+  
+  // Optional: log the copy attempt
+  console.log('Copy attempt detected in test question')
+}
+
+// ADD THIS NEW METHOD FOR KEYBOARD COPY PREVENTION
+const handleKeyDown = (event: KeyboardEvent) => {
+  // Check for Ctrl+C, Ctrl+X, or Command+C, Command+X
+  if ((event.ctrlKey || event.metaKey) && (event.key === 'c' || event.key === 'x')) {
+    // Check if selection is within a no-select element
+    const selection = window.getSelection()
+    if (selection && selection.toString().trim() !== '') {
+      // If there's text selected, check if it's within our protected elements
+      let isProtectedContent = false
+      let currentNode = selection.anchorNode
+      
+      while (currentNode) {
+        if (currentNode.nodeType === Node.ELEMENT_NODE && 
+            (currentNode as Element).classList.contains('no-select')) {
+          isProtectedContent = true
+          break
+        }
+        currentNode = currentNode.parentNode
+      }
+      
+      if (isProtectedContent) {
+        event.preventDefault()
+        handleCopyAttempt(event)
+      }
+    }
+  }
+}
 
 // Methods
 const calculateProgressPercentage = () => {
@@ -523,13 +599,34 @@ const checkRemainingQuestions = async () => {
   }
 }
 
-// Lifecycle hooks
-onMounted(async () => {
+// MODIFY LIFECYCLE HOOKS
+onMounted(() => {
   window.addEventListener('beforeunload', beforeUnloadHandler)
-  await fetchTestDetails()
+  // ADD THIS NEW EVENT LISTENER
+  document.addEventListener('keydown', handleKeyDown)
+  
+  fetchTestDetails()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', beforeUnloadHandler)
+  // ADD THIS NEW EVENT LISTENER CLEANUP
+  document.removeEventListener('keydown', handleKeyDown)
+  
+  // ADD THIS NEW TIMER CLEANUP
+  if (copyAlertTimer.value !== null) {
+    window.clearTimeout(copyAlertTimer.value)
+  }
 })
 </script>
+
+<!-- ADD THIS STYLE SECTION -->
+<style scoped>
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+</style>

@@ -1,6 +1,22 @@
 <!-- src/components/student/reading/QuestionPanel.vue -->
 <template>
-  <div class="space-y-6">
+  <div 
+    class="space-y-6"
+    @copy.prevent="handleCopyAttempt"
+    @cut.prevent="handleCopyAttempt"
+  >
+    <!-- Copy Attempt Alert -->
+    <div 
+      v-if="showCopyAlert"
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-50 flex items-center"
+      role="alert"
+    >
+      <div class="flex-shrink-0 mr-2">
+        <ShieldAlert class="h-5 w-5 text-red-500" />
+      </div>
+      <span>Copying questions is not allowed</span>
+    </div>
+    
     <!-- Reading Check (Pre-question) Section -->
     <div
       class="bg-white shadow rounded-lg p-6 border-l-4"
@@ -25,7 +41,7 @@
         </div>
 
         <!-- Question Text -->
-        <p class="text-gray-700 text-base mb-4">
+        <p class="text-gray-700 text-base mb-4 no-select">
           {{ preQuestion.question_text }}
         </p>
 
@@ -85,12 +101,12 @@
                 />
               </div>
               <div class="ml-3">
-                <p class="text-sm whitespace-pre-wrap">{{ preFeedback }}</p>
+                <p class="text-sm whitespace-pre-wrap no-select">{{ preFeedback }}</p>
                 
                 <!-- Next steps guidance -->
                 <div 
                   v-if="preQuestionCorrect" 
-                  class="mt-2 text-sm bg-green-100 p-2 rounded-md"
+                  class="mt-2 text-sm bg-green-100 p-2 rounded-md no-select"
                 >
                   <p class="font-medium">Great! Now please answer the critical thinking question below.</p>
                 </div>
@@ -156,7 +172,7 @@
         <!-- Enabled main question -->
         <div v-else>
           <!-- Question Text -->
-          <p class="text-gray-700 text-base mb-4">
+          <p class="text-gray-700 text-base mb-4 no-select">
             {{ mainQuestion.question_text }}
           </p>
 
@@ -216,7 +232,7 @@
                   />
                 </div>
                 <div class="ml-3">
-                  <p class="text-sm whitespace-pre-wrap">{{ mainFeedback }}</p>
+                  <p class="text-sm whitespace-pre-wrap no-select">{{ mainFeedback }}</p>
                 </div>
               </div>
             </div>
@@ -261,7 +277,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { 
   CheckCircle, 
@@ -269,7 +285,8 @@ import {
   ArrowRight, 
   BookOpen, 
   BrainCircuit,
-  Lock
+  Lock,
+  ShieldAlert
 } from 'lucide-vue-next'
 import { useReadingStore } from '@/stores/reading'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -304,6 +321,8 @@ const {
 const preAnswerInput = ref('')
 const mainAnswerInput = ref('')
 const showError = ref(false)
+const showCopyAlert = ref(false)
+const copyAlertTimer = ref<number | null>(null)
 
 // Computed properties
 const isMainQuestionEnabled = computed(() => readingStore.isMainQuestionEnabled)
@@ -372,6 +391,68 @@ const handleProgressClick = async () => {
   }
 }
 
+// Handle copy attempt
+const handleCopyAttempt = (event: Event) => {
+  // Prevent the default copy/cut action
+  event.preventDefault()
+  
+  // Show the copy alert
+  showCopyAlert.value = true
+  
+  // Clear any existing timer
+  if (copyAlertTimer.value !== null) {
+    window.clearTimeout(copyAlertTimer.value)
+  }
+  
+  // Set a timer to hide the alert after 3 seconds
+  copyAlertTimer.value = window.setTimeout(() => {
+    showCopyAlert.value = false
+  }, 3000)
+  
+  // Optional: log the copy attempt for monitoring
+  console.log('Copy attempt detected in question panel')
+}
+
+// Add keyboard shortcut listener for copy/cut commands
+const handleKeyDown = (event: KeyboardEvent) => {
+  // Check for Ctrl+C, Ctrl+X, or Command+C, Command+X
+  if ((event.ctrlKey || event.metaKey) && (event.key === 'c' || event.key === 'x')) {
+    // Check if selection is within the question panel
+    const selection = window.getSelection()
+    if (selection && selection.toString().trim() !== '') {
+      // If there's text selected, check if it's within our component
+      let isWithinQuestionPanel = false
+      let currentNode = selection.anchorNode
+      
+      while (currentNode) {
+        if (currentNode.nodeType === Node.ELEMENT_NODE && 
+            (currentNode as Element).classList.contains('no-select')) {
+          isWithinQuestionPanel = true
+          break
+        }
+        currentNode = currentNode.parentNode
+      }
+      
+      if (isWithinQuestionPanel) {
+        event.preventDefault()
+        handleCopyAttempt(event)
+      }
+    }
+  }
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+  if (copyAlertTimer.value !== null) {
+    window.clearTimeout(copyAlertTimer.value)
+  }
+})
+
 // Watch for question changes to reset form state
 watch(() => preQuestion.value?.question_text, () => {
   preAnswerInput.value = ''
@@ -388,3 +469,17 @@ watch(() => error.value, (newError) => {
   }
 })
 </script>
+
+<style scoped>
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Optional: Modify cursor to indicate copying is not allowed */
+.no-select {
+  cursor: default;
+}
+</style>
