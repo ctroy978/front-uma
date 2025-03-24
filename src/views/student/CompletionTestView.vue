@@ -1,7 +1,7 @@
 <!-- src/views/student/CompletionTestView.vue -->
 <template>
   <div class="min-h-screen bg-gray-100">
-    <!-- Copy Attempt Alert (ADD THIS) -->
+    <!-- Copy Attempt Alert -->
     <div 
       v-if="showCopyAlert"
       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md shadow-lg z-50 flex items-center"
@@ -11,6 +11,85 @@
         <ShieldAlert class="h-5 w-5 text-red-500" />
       </div>
       <span>Copying test questions is not allowed</span>
+    </div>
+
+    <!-- Tab Switch Warning Alert -->
+    <div 
+      v-if="showViolationWarning"
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-md shadow-lg z-50 flex items-center"
+      role="alert"
+    >
+      <div class="flex-shrink-0 mr-2">
+        <AlertTriangle class="h-5 w-5 text-yellow-500" />
+      </div>
+      <div>
+        <p class="font-bold">Warning: Test Integrity Violation</p>
+        <p>Leaving the test page is not allowed. One more violation will lock your test.</p>
+      </div>
+      <button 
+        @click="showViolationWarning = false"
+        class="ml-4 text-yellow-700 hover:text-yellow-900"
+      >
+        <X class="h-4 w-4" />
+      </button>
+    </div>
+
+    <!-- Test Locked Overlay -->
+    <div 
+      v-if="isLocked"
+      class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4"
+    >
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+        <div class="flex items-center justify-center text-red-500 mb-4">
+          <Lock class="h-16 w-16" />
+        </div>
+        
+        <h2 class="text-2xl font-bold text-center mb-4">Test Locked</h2>
+        
+        <p class="mb-6 text-gray-700">
+          Your test has been locked due to multiple test integrity violations. 
+          Please ask your teacher for assistance.
+        </p>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Teacher Bypass Code
+          </label>
+          <input
+            type="password"
+            v-model="bypassCode"
+            maxlength="4"
+            placeholder="Enter 4-digit code"
+            class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p v-if="bypassError" class="mt-1 text-sm text-red-600">{{ bypassError }}</p>
+        </div>
+        
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <AlertCircle class="h-5 w-5 text-yellow-400" />
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-yellow-700">
+                <strong>Important:</strong> Entering the bypass code will reset your test completely. 
+                All your current progress will be lost.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex justify-end">
+          <BaseButton
+            variant="primary"
+            @click="validateBypassCode"
+            :loading="isSubmittingBypass"
+            :disabled="bypassCode.length !== 4 || isSubmittingBypass"
+          >
+            Reset Test
+          </BaseButton>
+        </div>
+      </div>
     </div>
 
     <!-- Top Navigation Bar -->
@@ -83,6 +162,7 @@
                 <li>Think carefully about each question</li>
                 <li>Support your answers with evidence from the text</li>
                 <li>You cannot change your answers once submitted</li>
+                <li>Do not leave this page during the test. Leaving the page twice will lock your test.</li>
               </ul>
             </div>
           </div>
@@ -99,7 +179,7 @@
         </div>
       </div>
 
-      <!-- Current Question (MODIFY THIS SECTION) -->
+      <!-- Current Question -->
       <div 
         v-if="!isLoading && currentQuestion && !testResults" 
         class="bg-white shadow rounded-lg p-6"
@@ -124,17 +204,17 @@
           </span>
         </div>
         
-        <!-- Question Text (ADD no-select CLASS) -->
+        <!-- Question Text -->
         <h3 class="text-lg font-medium text-gray-900 mb-4 no-select">{{ currentQuestion.question_text }}</h3>
         
-        <!-- Answer Input (unchanged - allow typing here) -->
+        <!-- Answer Input -->
         <div class="mt-6">
           <BaseTextarea
             v-model="currentAnswer"
             name="answer"
             label="Your Answer"
             placeholder="Type your answer here. Be thorough and use evidence from the text to support your answer."
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || isLocked"
             :error="errorMessage"
             :rows="8"
             required
@@ -147,7 +227,7 @@
             @click="submitAnswer"
             variant="primary"
             :loading="isSubmitting"
-            :disabled="!currentAnswer.trim() || isSubmitting"
+            :disabled="!currentAnswer.trim() || isSubmitting || isLocked"
           >
             {{ !hasRemainingQuestions ? 'Submit & Complete Test' : 'Submit & Continue' }}
           </BaseButton>
@@ -259,7 +339,10 @@ import {
   ArrowLeft, 
   AlertCircle, 
   Info, 
-  ShieldAlert // ADD THIS IMPORT
+  ShieldAlert,
+  AlertTriangle,
+  X,
+  Lock
 } from 'lucide-vue-next'
 import BaseAlert from '@/components/base/BaseAlert.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -287,9 +370,17 @@ const showConfirmDialog = ref(false)
 const hasRemainingQuestions = ref(true)
 const totalQuestionsCount = ref(0)
 
-// ADD THESE NEW STATE VARIABLES
+// Copy protection state
 const showCopyAlert = ref(false)
 const copyAlertTimer = ref<number | null>(null)
+
+// Test integrity state (NEW)
+const violations = ref(0)
+const showViolationWarning = ref(false)
+const isLocked = ref(false)
+const bypassCode = ref('')
+const bypassError = ref('')
+const isSubmittingBypass = ref(false)
 
 // Computed properties
 const errorMessage = computed(() => error.value || undefined)
@@ -298,7 +389,59 @@ const errorMessage = computed(() => error.value || undefined)
 const visitedQuestionIds = ref(new Set<string>())
 const currentQuestionIndex = ref(0)
 
-// ADD THIS NEW METHOD FOR COPY PREVENTION
+// Test Integrity Methods (NEW)
+const handleVisibilityChange = () => {
+  // Only count violations when the test is in progress
+  if (document.hidden && isStarted.value && !testResults.value && !isLocked.value) {
+    violations.value++
+    
+    // First violation: visible warning
+    if (violations.value === 1) {
+      showViolationWarning.value = true
+    }
+    // Second violation: lock the test
+    else if (violations.value >= 2) {
+      isLocked.value = true
+      // Hide the warning when locking the test
+      showViolationWarning.value = false
+    }
+
+    // Log violations for monitoring
+    console.log(`Test integrity violation #${violations.value} detected`)
+  }
+}
+
+// This function handles the bypass code validation in the CompletionTestView.vue component
+const validateBypassCode = async () => {
+  if (bypassCode.value.length !== 4) return
+
+  try {
+    isSubmittingBypass.value = true
+    bypassError.value = ''
+
+    // Call the API to validate the bypass code and reset the test
+    await api.post(`/completion-test/${completionId.value}/reset-test`, {
+      bypass_code: bypassCode.value
+    })
+
+    // After successful reset, always send the student to the Student Portal dashboard
+    console.log('Reset successful, redirecting to Student Portal')
+    
+    // Show a success message
+    alert('Test has been reset successfully. You will be redirected to the Student Portal.')
+    
+    // Redirect to the Student Portal dashboard
+    router.push({ name: 'student-dashboard' })
+
+  } catch (err: any) { // Type assertion to 'any' to fix the TypeScript error
+    console.error(err)
+    bypassError.value = err.response?.data?.detail || 'Invalid bypass code. Please ask your teacher for assistance.'
+  } finally {
+    isSubmittingBypass.value = false
+  }
+}
+
+// Copy prevention methods
 const handleCopyAttempt = (event: Event) => {
   // Prevent the default copy/cut action
   event.preventDefault()
@@ -316,11 +459,10 @@ const handleCopyAttempt = (event: Event) => {
     showCopyAlert.value = false
   }, 3000)
   
-  // Optional: log the copy attempt
+  // Log the copy attempt
   console.log('Copy attempt detected in test question')
 }
 
-// ADD THIS NEW METHOD FOR KEYBOARD COPY PREVENTION
 const handleKeyDown = (event: KeyboardEvent) => {
   // Check for Ctrl+C, Ctrl+X, or Command+C, Command+X
   if ((event.ctrlKey || event.metaKey) && (event.key === 'c' || event.key === 'x')) {
@@ -367,6 +509,11 @@ const startTest = async () => {
     isLoading.value = true
     isStarted.value = true
     error.value = ''
+    
+    // Reset state for new test
+    violations.value = 0
+    isLocked.value = false
+    showViolationWarning.value = false
     
     // Reset progress tracking
     visitedQuestionIds.value = new Set<string>()
@@ -426,7 +573,7 @@ const loadQuestion = async (questionId: string) => {
 }
 
 const submitAnswer = async () => {
-  if (!currentAnswer.value.trim()) return
+  if (!currentAnswer.value.trim() || isLocked.value) return
   
   try {
     isSubmitting.value = true
@@ -583,7 +730,7 @@ const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
   }
 }
 
-// Add this new function
+// Check if there are remaining questions
 const checkRemainingQuestions = async () => {
   try {
     const response = await api.get(
@@ -599,28 +746,28 @@ const checkRemainingQuestions = async () => {
   }
 }
 
-// MODIFY LIFECYCLE HOOKS
+// Lifecycle hooks
 onMounted(() => {
   window.addEventListener('beforeunload', beforeUnloadHandler)
-  // ADD THIS NEW EVENT LISTENER
   document.addEventListener('keydown', handleKeyDown)
+  // Add the visibility change event listener
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   
   fetchTestDetails()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', beforeUnloadHandler)
-  // ADD THIS NEW EVENT LISTENER CLEANUP
   document.removeEventListener('keydown', handleKeyDown)
+  // Remove the visibility change event listener
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   
-  // ADD THIS NEW TIMER CLEANUP
   if (copyAlertTimer.value !== null) {
     window.clearTimeout(copyAlertTimer.value)
   }
 })
 </script>
 
-<!-- ADD THIS STYLE SECTION -->
 <style scoped>
 .no-select {
   -webkit-user-select: none;
