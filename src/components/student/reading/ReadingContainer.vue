@@ -29,6 +29,8 @@ const completionMessage = ref('')
 
 // Store state using storeToRefs for reactivity
 const { 
+  currentChunkPosition,
+  totalChunks,
   currentChunk, 
   isLoading, 
   error, 
@@ -162,6 +164,9 @@ onUnmounted(() => {
 
           <!-- Reading Progress Indicator -->
           <div class="flex items-center space-x-3">
+            <span class="text-sm text-gray-600 px-3 py-1 bg-gray-100 rounded-full">
+              Page {{ currentChunkPosition }} of {{ totalChunks }}
+            </span>
             <span v-if="preQuestionCorrect" class="flex items-center text-sm text-green-600">
               <CheckCircle class="h-4 w-4 mr-1" />
               Reading Check Complete

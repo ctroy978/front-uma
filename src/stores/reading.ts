@@ -36,6 +36,8 @@ interface ReadingState {
   assessmentId: string | null
   textTitle: string | null
   currentChunk: Chunk | null
+  currentChunkPosition: number
+  totalChunks: number
   
   // Pre-question state
   preQuestion: Question | null
@@ -88,6 +90,8 @@ export const useReadingStore = defineStore('reading', {
     assessmentId: null,
     textTitle: null,
     currentChunk: null,
+    currentChunkPosition: 1,
+    totalChunks: 0,
     
     // Pre-question state
     preQuestion: null,
@@ -148,16 +152,28 @@ export const useReadingStore = defineStore('reading', {
     async startReading(textId: string) {
       this.isLoading = true;
       this.error = null;
-
+    
       try {
         // Start the assessment
         const response = await api.post(`/assessment/start/${textId}`);
         const { assessment_id, text_title, chunk } = response.data;
-
+    
         this.assessmentId = assessment_id;
         this.textTitle = text_title;
         this.currentChunk = chunk;
         this.isActive = true;
+        
+        // Reset chunk position counter
+        this.currentChunkPosition = 1;
+        
+        // Get total chunks count from the new endpoint
+        try {
+          const chunkResponse = await api.get(`/assessment/text/${textId}/chunks`);
+          this.totalChunks = chunkResponse.data.total_chunks || 0;
+        } catch (chunkError) {
+          console.error("Failed to get chunk count:", chunkError);
+          this.totalChunks = 0;
+        }
         
         // Fetch both questions
         await this.fetchPreQuestion();
@@ -193,6 +209,9 @@ export const useReadingStore = defineStore('reading', {
       try {
         const response = await api.get(`/assessment/next/${this.assessmentId}`);
         this.currentChunk = response.data;
+        
+        // Increment chunk position counter
+        this.currentChunkPosition++;
         
         // Reset all question states for the new chunk
         this.resetQuestionState();
@@ -465,6 +484,8 @@ export const useReadingStore = defineStore('reading', {
       this.assessmentId = null;
       this.textTitle = null;
       this.currentChunk = null;
+      this.currentChunkPosition = 1;
+      this.totalChunks = 0;
       
       // Reset question states
       this.resetQuestionState();
