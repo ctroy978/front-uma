@@ -145,17 +145,20 @@ const handleSubmit = async () => {
   error.value = '';
   showError.value = false;
   
+  // Normalize the email to lowercase
+  const normalizedEmail = formData.value.email.toLowerCase();
+  
   try {
     const {data: _data } = await api.post('/auth/register/initiate', {
       username: formData.value.username,
-      email: formData.value.email,
+      email: normalizedEmail,
       full_name: formData.value.fullName
     });
     
     showSuccess.value = true;
     localStorage.setItem('pendingVerification', 'true');
     localStorage.setItem('pendingRegistration', JSON.stringify({
-      email: formData.value.email,
+      email: normalizedEmail,
       username: formData.value.username,
       fullName: formData.value.fullName
     }));
@@ -166,7 +169,7 @@ const handleSubmit = async () => {
     router.push({ 
       name: 'verify',
       params: { 
-        email: encodeURIComponent(formData.value.email),
+        email: encodeURIComponent(normalizedEmail),
         username: encodeURIComponent(formData.value.username),
         fullName: encodeURIComponent(formData.value.fullName)
       }

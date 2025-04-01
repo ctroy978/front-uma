@@ -121,7 +121,7 @@ const handleSubmit = async () => {
     router.push({ 
       name: 'verify-login',
       params: { 
-        email: encodeURIComponent(email.value)
+        email: encodeURIComponent(normalizedEmail)
       }
     });
     
