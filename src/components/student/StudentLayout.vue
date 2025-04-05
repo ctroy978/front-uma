@@ -32,11 +32,22 @@
                 :class="[
                   currentRoute === 'student-completions'
                     ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    : hasPendingCompletions
+                      ? 'text-blue-600 hover:bg-blue-50 hover:text-blue-700' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 ]"
               >
-                <ClipboardCheck class="mr-3 h-5 w-5 text-gray-400" />
+                <ClipboardCheck 
+                  class="mr-3 h-5 w-5" 
+                  :class="hasPendingCompletions ? 'text-blue-500' : 'text-gray-400'" 
+                />
                 <span class="truncate">Completion Tests</span>
+                <span 
+                  v-if="hasPendingCompletions" 
+                  class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-blue-600 rounded-full"
+                >
+                  {{ pendingCompletionsCount }}
+                </span>
               </router-link>
 
               <!-- Teacher List Section -->
@@ -97,10 +108,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { Home, ClipboardCheck } from 'lucide-vue-next'
 import TeacherList from './TeacherList.vue'
 import { useStudentStore } from '@/stores/student'
+import { useCompletionStore } from '@/stores/completion'
+
 
 const route = useRoute()
 const router = useRouter()
 const studentStore = useStudentStore()
+const completionStore = useCompletionStore()
+
 
 // Computed properties
 const currentRoute = computed(() => route.name as string)
@@ -130,13 +145,28 @@ const handleTeacherSelect = (teacherId: string) => {
     params: { id: teacherId }
   })
 }
+const hasPendingCompletions = computed(() => {
+  return completionStore.completions.some(
+    completion => completion.test_status === 'pending'
+  )
+})
+
+// Add this computed property to get count
+const pendingCompletionsCount = computed(() => {
+  return completionStore.completions.filter(
+    completion => completion.test_status === 'pending'
+  ).length
+})
 
 // Lifecycle
 onMounted(async () => {
   try {
-    await studentStore.fetchTeachers()
+    await Promise.all([
+      studentStore.fetchTeachers(),
+      completionStore.fetchAvailableCompletions()
+    ])
   } catch (error) {
-    console.error('Failed to fetch teachers:', error)
+    console.error('Failed to fetch data:', error)
   }
 })
 </script>
