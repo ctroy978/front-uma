@@ -34,6 +34,7 @@ interface SimplifiedTextResponse {
 
 interface ReadingState {
   assessmentId: string | null
+  textId: string | null
   textTitle: string | null
   currentChunk: Chunk | null
   currentChunkPosition: number
@@ -88,6 +89,7 @@ interface NavigationResult {
 export const useReadingStore = defineStore('reading', {
   state: (): ReadingState => ({
     assessmentId: null,
+    textId: null,
     textTitle: null,
     currentChunk: null,
     currentChunkPosition: 1,
@@ -149,6 +151,19 @@ export const useReadingStore = defineStore('reading', {
   },
 
   actions: {
+    async fetchCurrentPosition(textId: string, chunkId: string) {
+      try {
+        const positionResponse = await api.get(
+          `/assessment/text/${textId}/chunk-position/${chunkId}`
+        );
+        this.currentChunkPosition = positionResponse.data.position || 1;
+        return positionResponse.data.position;
+      } catch (error) {
+        console.error("Failed to get chunk position:", error);
+        // Don't update position on error - keep existing value
+        return null;
+      }
+    },
     async startReading(textId: string) {
       this.isLoading = true;
       this.error = null;
@@ -159,20 +174,23 @@ export const useReadingStore = defineStore('reading', {
         const { assessment_id, text_title, chunk } = response.data;
     
         this.assessmentId = assessment_id;
+        this.textId = textId; // Store the textId
         this.textTitle = text_title;
         this.currentChunk = chunk;
         this.isActive = true;
         
-        // Reset chunk position counter
-        this.currentChunkPosition = 1;
-        
-        // Get total chunks count from the new endpoint
+        // Get total chunks count
         try {
           const chunkResponse = await api.get(`/assessment/text/${textId}/chunks`);
           this.totalChunks = chunkResponse.data.total_chunks || 0;
         } catch (chunkError) {
           console.error("Failed to get chunk count:", chunkError);
           this.totalChunks = 0;
+        }
+        
+        // Get current chunk position from API
+        if (chunk && chunk.id) {
+          await this.fetchCurrentPosition(textId, chunk.id);
         }
         
         // Fetch both questions
@@ -189,10 +207,10 @@ export const useReadingStore = defineStore('reading', {
     },
 
     async getNextChunk() {
-      if (!this.assessmentId) {
+      if (!this.assessmentId || !this.textId) {
         return;
       }
-    
+      
       // If we're on the last chunk, trigger completion
       if (!this.currentChunk?.has_next) {
         throw {
@@ -202,16 +220,18 @@ export const useReadingStore = defineStore('reading', {
           }
         };
       }
-    
+      
       this.isLoading = true;
       this.error = null;
-    
+      
       try {
         const response = await api.get(`/assessment/next/${this.assessmentId}`);
         this.currentChunk = response.data;
         
-        // Increment chunk position counter
-        this.currentChunkPosition++;
+        // Get current chunk position from API instead of incrementing
+        if (this.currentChunk && this.currentChunk.id) {
+          await this.fetchCurrentPosition(this.textId, this.currentChunk.id);
+        }
         
         // Reset all question states for the new chunk
         this.resetQuestionState();
@@ -492,6 +512,7 @@ export const useReadingStore = defineStore('reading', {
       
       // Reset loading and error states
       this.isLoading = false;
+      this.textId = null;
       this.isPreQuestionLoading = false;
       this.isMainQuestionLoading = false;
       this.error = null;
