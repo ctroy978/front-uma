@@ -230,32 +230,32 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async logout() {
-      this.loading = true;
-      
-      try {
-        // Configure axios to not reject on any status code for logout
-        const response = await api.post<LogoutResponse>('/auth/logout', {}, {
-          validateStatus: (_status) => true // Accept any status code
-        });
-        
-        // Log non-200 responses but don't throw
-        if (response.status !== 200) {
-          console.warn('Logout API warning:', response.status, response.data);
-        }
-      } catch (error) {
-        // Only log network/connection errors
-        console.error('Logout network error:', error);
-      } finally {
-        // Always perform cleanup
-        this.cleanup();
-        this.loading = false;
-        
-        // Force navigation to login
-        const router = useRouter();
-        router.push({ name: 'login' });
-      }
-    },
+
+async logout() {
+  this.loading = true;
+  
+  try {
+    // Configure axios to not reject on any status code for logout
+    const response = await api.post<LogoutResponse>('/auth/logout', {}, {
+      validateStatus: (_status) => true // Accept any status code
+    });
+    
+    // Log non-200 responses but don't throw
+    if (response.status !== 200) {
+      console.warn('Logout API warning:', response.status, response.data);
+    }
+  } catch (error) {
+    // Only log network/connection errors
+    console.error('Logout network error:', error);
+  } finally {
+    // Always perform cleanup
+    this.cleanup();
+    this.loading = false;
+    
+    // Use window.location instead of router
+    window.location.href = '/login';
+  }
+},
 
     clearAuthenticationData() {
       // Clear authentication state
