@@ -323,11 +323,11 @@
     <!-- Confirmation Dialog -->
     <BaseDialog
       v-model="showConfirmDialog"
-      title="Return to Dashboard"
-      content="Are you sure you want to leave the test? Your progress will be lost."
-      confirm-text="Leave Test"
-      cancel-text="Stay"
-      @confirm="confirmLeaveTest"
+      title="Leave Test?"
+      content="If you leave now, your progress will be lost and you'll have to start over when you return. Are you sure you want to leave?"
+      confirm-text="Leave Anyway"
+      cancel-text="Stay and Continue"
+      @confirm="returnToDashboard"
     />
   </div>
 </template>
@@ -649,7 +649,7 @@ const finalizeTest = async () => {
 
 const handleBack = () => {
   if (isStarted.value && !testResults.value) {
-    // Only show confirmation if test is in progress
+    // Show warning about losing progress
     showConfirmDialog.value = true
   } else {
     returnToDashboard()

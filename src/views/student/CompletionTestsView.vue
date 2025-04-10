@@ -57,6 +57,9 @@
                   :class="getDaysRemainingClasses(test.days_remaining)"
                 >
                   {{ getDaysRemainingText(test.days_remaining) }}
+                  <div v-if="test.test_status === 'in_progress'" class="mt-1 text-xs text-orange-600">
+                    Note: Test will restart if you've left it unfinished.
+                  </div>
                 </p>
               </div>
   

@@ -46,11 +46,13 @@ export const useCompletionStore = defineStore('completion', {
       }
     },
 
+
     async startCompletionTest(completionId: string) {
       this.isLoading = true
       this.error = null
 
       try {
+        // This endpoint will reset the test if it was previously in progress
         const response = await api.post(`/student/completion/${completionId}/start`)
         return response.data
       } catch (error: any) {
