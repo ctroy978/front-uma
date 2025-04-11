@@ -1,4 +1,3 @@
-<!-- src/views/student/CompletionTestView.vue -->
 <template>
   <div class="min-h-screen bg-gray-100">
     <!-- Copy Attempt Alert -->
@@ -168,6 +167,20 @@
           </div>
         </div>
         
+        <!-- Text Reference Button for Introduction -->
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-sm text-gray-600">Need to review the text before starting?</span>
+          <BaseButton
+            variant="default"
+            size="sm"
+            class="flex items-center gap-1"
+            @click="showTextReferenceDialog = true"
+          >
+            <Book class="h-4 w-4" />
+            <span>View Text Reference</span>
+          </BaseButton>
+        </div>
+        
         <div class="mt-6">
           <BaseButton
             variant="primary"
@@ -194,8 +207,18 @@
           ></div>
         </div>
         
-        <!-- Category Badge -->
-        <div class="mb-4 flex justify-end">
+        <!-- Category Badge and Text Reference Button -->
+        <div class="mb-4 flex justify-between items-center">
+          <BaseButton
+            variant="default"
+            size="sm"
+            class="flex items-center gap-1"
+            @click="showTextReferenceDialog = true"
+          >
+            <Book class="h-4 w-4" />
+            <span>View Text Reference</span>
+          </BaseButton>
+          
           <span 
             class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium no-select"
             :class="getCategoryClass(currentQuestion.category)"
@@ -323,11 +346,17 @@
     <!-- Confirmation Dialog -->
     <BaseDialog
       v-model="showConfirmDialog"
-      title="Leave Test?"
-      content="If you leave now, your progress will be lost and you'll have to start over when you return. Are you sure you want to leave?"
-      confirm-text="Leave Anyway"
-      cancel-text="Stay and Continue"
-      @confirm="returnToDashboard"
+      title="Return to Dashboard"
+      content="Are you sure you want to leave the test? Your progress will be lost."
+      confirm-text="Leave Test"
+      cancel-text="Stay"
+      @confirm="confirmLeaveTest"
+    />
+    
+    <!-- Text Reference Dialog -->
+    <TextReferenceDialog
+      v-model:show="showTextReferenceDialog"
+      :completion-id="completionId"
     />
   </div>
 </template>
@@ -349,6 +378,8 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import api from '@/utils/axios'
+import TextReferenceDialog from '@/components/student/reading/TextReferenceDialog.vue'
+import { Book } from 'lucide-vue-next'
 
 // Props and route params
 const route = useRoute()
@@ -381,6 +412,9 @@ const isLocked = ref(false)
 const bypassCode = ref('')
 const bypassError = ref('')
 const isSubmittingBypass = ref(false)
+
+const showTextReferenceDialog = ref(false)
+
 
 // Computed properties
 const errorMessage = computed(() => error.value || undefined)
