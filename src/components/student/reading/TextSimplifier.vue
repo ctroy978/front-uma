@@ -63,7 +63,11 @@
               </span>
             </div>
           </div>
-          <div class="whitespace-pre-wrap break-words font-normal text-gray-900 text-lg leading-relaxed">
+          <div 
+            class="whitespace-pre-wrap break-words font-normal text-gray-900 text-lg leading-relaxed"
+            @copy.prevent="handleCopyAttempt"
+            @contextmenu.prevent
+          >
             {{ simplifiedText }}
           </div>
         </div>
@@ -109,6 +113,11 @@
   });
   
   // Methods
+  const handleCopyAttempt = () => {
+  console.log('Copy attempt detected');
+  // Optionally track this behavior or show a message to the student
+  }
+
   const handleSimplify = async () => {
     console.log('Attempting to simplify text...');
     
