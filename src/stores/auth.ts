@@ -1,7 +1,6 @@
 // src/stores/auth.ts
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
 import api from '../utils/axios'
 
 
