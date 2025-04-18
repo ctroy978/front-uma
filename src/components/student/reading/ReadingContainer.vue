@@ -233,6 +233,8 @@ onUnmounted(() => {
                   @dblclick="handleTextDoubleClick"
                   @copy.prevent="handleCopyAttempt"
                   @contextmenu.prevent
+                  @dragstart.prevent
+
                 >
                   {{ currentChunk.content }}
                 </div>

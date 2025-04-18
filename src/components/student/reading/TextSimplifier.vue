@@ -67,6 +67,8 @@
             class="whitespace-pre-wrap break-words font-normal text-gray-900 text-lg leading-relaxed"
             @copy.prevent="handleCopyAttempt"
             @contextmenu.prevent
+            @dragstart.prevent
+
           >
             {{ simplifiedText }}
           </div>
