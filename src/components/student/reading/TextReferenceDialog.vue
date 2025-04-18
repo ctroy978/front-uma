@@ -64,6 +64,7 @@
         @copy.prevent="handleCopyAttempt"
         @cut.prevent="handleCopyAttempt"
         @contextmenu.prevent
+        @dragstart.prevent
       >
         <div 
           v-for="(chunk, index) in chunks" 
