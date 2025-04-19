@@ -105,17 +105,82 @@
         </div>
       </div>
 
-      <!-- Performance Chart -->
+      <!-- Performance Summary - Text-Based Instead of Chart -->
       <div v-if="report.categoryPerformance && report.categoryPerformance.length" class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-5 border-b border-gray-200">
           <h2 class="text-lg font-medium text-gray-900">Performance by Category</h2>
         </div>
         <div class="px-6 py-5">
-          <div class="h-64">
-            <CategoryPerformanceChart :chartData="report.categoryPerformance" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div 
+              v-for="(category, index) in report.categoryPerformance" 
+              :key="index"
+              class="border rounded-lg p-4"
+            >
+              <h3 class="text-sm font-medium text-gray-700">{{ category.category }}</h3>
+              <div class="mt-2 flex items-center">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    class="h-2.5 rounded-full" 
+                    :class="getProgressBarColor(category.score)"
+                    :style="{ width: `${category.score}%` }"
+                  ></div>
+                </div>
+                <span class="ml-3 text-sm font-medium" :class="getScoreColorClass(category.score)">
+                  {{ Math.round(category.score) }}%
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Performance Summary Text -->
+          <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">Performance Summary</h3>
+            <p class="text-sm text-gray-600">
+              {{ performanceSummary }}
+            </p>
           </div>
         </div>
       </div>
+      <!-- Add this section after the Performance Summary in SingleReportView.vue -->
+<div v-if="report.questions && report.questions.length" class="bg-white shadow rounded-lg mb-6">
+  <div class="px-6 py-5 border-b border-gray-200">
+    <h2 class="text-lg font-medium text-gray-900">Question Details</h2>
+  </div>
+  <div class="px-6 py-5">
+    <div class="overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr v-for="question in report.questions" :key="question.id" class="hover:bg-gray-50">
+            <td class="px-3 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                :class="getCategoryBadgeClass(question.category)">
+                {{ formatCategoryName(question.category) }}
+              </span>
+            </td>
+            <td class="px-3 py-4">
+              <div class="text-sm text-gray-900">{{ question.question_text }}</div>
+              <div class="text-xs text-gray-500 mt-1">Answer: {{ question.student_answer }}</div>
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                :class="question.is_correct ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                {{ question.is_correct ? 'Correct' : 'Incorrect' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
       <!-- Reading Level Analysis -->
       <div v-if="report.analysis && report.analysis.readingLevelAnalysis" class="bg-white shadow rounded-lg mb-6">
@@ -182,7 +247,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { 
   AlertCircle, Printer, Download, CheckCircle, FileQuestion
 } from 'lucide-vue-next';
-import CategoryPerformanceChart from '@/components/teacher/reports/CategoryPerformanceChart.vue';
 import { useReportsStore } from '@/stores/reports';
 
 const route = useRoute();
@@ -198,8 +262,50 @@ const isLoading = computed(() => reportsStore.isLoading);
 const error = computed(() => reportsStore.error);
 const report = computed(() => reportsStore.currentSingleReport);
 
+const getCategoryBadgeClass = (category: string): string => {
+  const categoryColors: Record<string, string> = {
+    'literal_basic': 'bg-blue-100 text-blue-800',
+    'literal_detailed': 'bg-blue-100 text-blue-800',
+    'vocabulary_context': 'bg-purple-100 text-purple-800',
+    'inferential_simple': 'bg-yellow-100 text-yellow-800',
+    'inferential_complex': 'bg-orange-100 text-orange-800',
+    'structural_basic': 'bg-green-100 text-green-800',
+    'structural_advanced': 'bg-green-100 text-green-800'
+  };
+  
+  return categoryColors[category] || 'bg-gray-100 text-gray-800';
+};
+
+const formatCategoryName = (category: string): string => {
+  return category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+
+
+// Performance summary computed property
+const performanceSummary = computed(() => {
+  if (!report.value || !report.value.categoryPerformance || report.value.categoryPerformance.length === 0) {
+    return "No performance data available.";
+  }
+
+  // Sort categories by score
+  const sortedCategories = [...report.value.categoryPerformance].sort((a, b) => b.score - a.score);
+  
+  // Get strongest and weakest categories
+  const strongest = sortedCategories[0];
+  const weakest = sortedCategories[sortedCategories.length - 1];
+  
+  // Calculate average score
+  const avgScore = sortedCategories.reduce((sum, cat) => sum + cat.score, 0) / sortedCategories.length;
+  
+  return `Overall category average: ${Math.round(avgScore)}%. Strongest in ${strongest.category} (${Math.round(strongest.score)}%) and needs most improvement in ${weakest.category} (${Math.round(weakest.score)}%).`;
+});
+
 // Methods
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string): string => {
   if (!dateString) return 'N/A';
   
   try {
@@ -216,7 +322,7 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const formatDuration = (seconds: number) => {
+const formatDuration = (seconds: number): string => {
   if (!seconds) return 'N/A';
   
   const minutes = Math.floor(seconds / 60);
@@ -224,12 +330,19 @@ const formatDuration = (seconds: number) => {
   return `${minutes} min ${remainingSeconds} sec`;
 };
 
-const getScoreColorClass = (score: number) => {
+const getScoreColorClass = (score: number): string => {
   if (!score && score !== 0) return 'text-gray-500';
   if (score >= 90) return 'text-green-600';
   if (score >= 80) return 'text-blue-600';
   if (score >= 70) return 'text-yellow-600';
   return 'text-red-600';
+};
+
+const getProgressBarColor = (score: number): string => {
+  if (score >= 90) return 'bg-green-600';
+  if (score >= 80) return 'bg-blue-600';
+  if (score >= 70) return 'bg-yellow-600';
+  return 'bg-red-600';
 };
 
 const printReport = () => {

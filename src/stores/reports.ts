@@ -6,13 +6,22 @@ import api from '@/utils/axios';
 export interface CategoryPerformance {
   category: string;
   score: number;
-  benchmark: number;
 }
 
 export interface ReportAnalysis {
   readingLevelAnalysis: string;
   textSpecificInsights: string;
   recommendedActivities: string[];
+}
+
+export interface QuestionDetail {
+  id: string;
+  category: string;
+  difficulty: string;
+  question_text: string;
+  student_answer: string;
+  is_correct: boolean;
+  time_spent_seconds: number;
 }
 
 export interface SingleReport {
@@ -29,6 +38,7 @@ export interface SingleReport {
   correctAnswers: number;
   categoryPerformance: CategoryPerformance[];
   analysis: ReportAnalysis;
+  questions?: QuestionDetail[];
 }
 
 export interface ReportListItem {
@@ -43,12 +53,24 @@ export interface ReportListItem {
   score: number;
 }
 
+// Filter parameters interface
+export interface ReportFilters {
+  studentId?: string;
+  reportType?: string;
+  dateRange?: string;
+  textTitle?: string;
+  gradeLevel?: number | null;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
 // State interface
 interface ReportsState {
   reports: ReportListItem[];
   currentSingleReport: SingleReport | null;
   isLoading: boolean;
   error: string | null;
+  availableTexts: { id: string; title: string; gradeLevel: number }[];
 }
 
 export const useReportsStore = defineStore('reports', {
@@ -56,7 +78,8 @@ export const useReportsStore = defineStore('reports', {
     reports: [],
     currentSingleReport: null,
     isLoading: false,
-    error: null
+    error: null,
+    availableTexts: []
   }),
 
   getters: {
@@ -73,17 +96,23 @@ export const useReportsStore = defineStore('reports', {
       }, []);
       
       return students.sort((a, b) => a.name.localeCompare(b.name));
+    },
+
+    // Get unique grade levels from the available texts
+    availableGradeLevels: (state) => {
+      const gradeLevels = [...new Set(state.availableTexts.map(text => text.gradeLevel))];
+      return gradeLevels.sort((a, b) => a - b);
     }
   },
 
   actions: {
-    async fetchReports() {
+    async fetchReports(filters: ReportFilters = {}) {
       this.isLoading = true;
       this.error = null;
 
       try {
-        // API call to fetch all reports
-        const response = await api.get('/teacher/reports');
+        // API call to fetch all reports with filters
+        const response = await api.get('/teacher/reports', { params: filters });
         
         // Filter to only include single test reports
         const filteredReports = response.data.filter((item: any) => 
@@ -102,6 +131,9 @@ export const useReportsStore = defineStore('reports', {
           date: item.completed_at || item.created_at,
           score: item.overall_score || 0
         }));
+
+        // Extract unique texts from the reports
+        this.updateAvailableTexts();
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to fetch reports';
         console.error('Error fetching reports:', error);
@@ -109,6 +141,32 @@ export const useReportsStore = defineStore('reports', {
       } finally {
         this.isLoading = false;
       }
+    },
+
+    // Update available texts list from reports
+    updateAvailableTexts() {
+      const textsMap = new Map();
+      
+      this.reports.forEach(report => {
+        if (report.textTitle && !textsMap.has(report.textTitle)) {
+          textsMap.set(report.textTitle, {
+            id: report.textTitle, // Using title as id since we don't have text_id
+            title: report.textTitle,
+            gradeLevel: report.gradeLevel
+          });
+        }
+      });
+      
+      this.availableTexts = Array.from(textsMap.values());
+    },
+
+    // Helper method to format category names for display
+    formatCategoryName(category: string): string {
+      // Convert snake_case to Title Case
+      return category
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     },
 
     async fetchSingleReport(studentId: string, reportId: string) {
@@ -120,27 +178,38 @@ export const useReportsStore = defineStore('reports', {
         // Fetch the single report data
         const response = await api.get(`/teacher/reports/student/${studentId}/report/${reportId}`);
         
-        // Get graph data for visualization
-        const graphResponse = await api.get(
-          `/teacher/reports/student/${studentId}/report/${reportId}/graph-data`
-        );
-        
         const reportData = response.data;
-        const graphData = graphResponse.data;
         
-        // Format category performance data
-        const categoryPerformance = graphData.categories.map((cat: any) => ({
-          category: this.formatCategoryName(cat.category),
-          score: cat.score,
-          benchmark: 75 // Default benchmark if not provided by API
-        }));
+        // Extract category performance data from the main report
+        const categoryPerformance: CategoryPerformance[] = [];
+        
+        // Extract category scores from the report data
+        const categories = [
+          'literal_basic', 
+          'literal_detailed', 
+          'vocabulary', 
+          'inferential_simple', 
+          'inferential_complex', 
+          'structural_basic', 
+          'structural_advanced'
+        ];
+        
+        categories.forEach(category => {
+          const scoreField = `${category}_success`;
+          if (reportData[scoreField] && reportData[scoreField] > 0) {
+            categoryPerformance.push({
+              category: this.formatCategoryName(category),
+              score: reportData[scoreField]
+            });
+          }
+        });
         
         this.currentSingleReport = {
           id: reportId,
           studentId,
           studentName: reportData.student_name,
           textTitle: reportData.text_title,
-          textType: graphData.text_metadata?.type || '',
+          textType: reportData.text_type || '',
           gradeLevel: reportData.text_grade_level || 0,
           completionDate: reportData.completion_date,
           duration: 0, // Not provided by API
@@ -152,7 +221,9 @@ export const useReportsStore = defineStore('reports', {
             readingLevelAnalysis: reportData.analysis.reading_level_analysis || '',
             textSpecificInsights: reportData.analysis.text_specific_insights || '',
             recommendedActivities: reportData.analysis.recommended_activities || []
-          }
+          },
+          // Add the questions data if it exists in the response
+          questions: reportData.questions || []
         };
       } catch (error: any) {
         this.error = error.response?.data?.detail || 'Failed to fetch report';
@@ -161,48 +232,6 @@ export const useReportsStore = defineStore('reports', {
       } finally {
         this.isLoading = false;
       }
-    },
-
-    // Filter reports based on criteria
-    filterReports(studentId: string = '', reportType: string = '', dateRange: string = '') {
-      let filteredReports = [...this.reports];
-      
-      // Apply student filter
-      if (studentId) {
-        filteredReports = filteredReports.filter(report => report.studentId === studentId);
-      }
-      
-      // Apply report type filter (only if needed, currently we only have single reports)
-      if (reportType && reportType !== 'single') {
-        // Currently only supporting 'single' reports, so return empty if anything else requested
-        return [];
-      }
-      
-      // Apply date range filter
-      if (dateRange) {
-        const daysAgo = parseInt(dateRange);
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-        
-        filteredReports = filteredReports.filter(report => {
-          const reportDate = new Date(report.date);
-          return reportDate >= cutoffDate;
-        });
-      }
-      
-      // Sort by most recent first
-      return filteredReports.sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      });
-    },
-
-    // Helper method to format category names for display
-    formatCategoryName(category: string) {
-      // Convert snake_case to Title Case
-      return category
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
     },
 
     // Clear current reports
@@ -216,6 +245,7 @@ export const useReportsStore = defineStore('reports', {
       this.currentSingleReport = null;
       this.isLoading = false;
       this.error = null;
+      this.availableTexts = [];
     }
   }
 });
